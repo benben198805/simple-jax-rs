@@ -1,6 +1,10 @@
 package simple.jax.rs;
 
-import jakarta.ws.rs.*;
+import jakarta.ws.rs.GET;
+import jakarta.ws.rs.Path;
+import jakarta.ws.rs.PathParam;
+import jakarta.ws.rs.Produces;
+import jakarta.ws.rs.QueryParam;
 import jakarta.ws.rs.core.MediaType;
 import org.eclipse.jetty.client.HttpClient;
 import org.eclipse.jetty.client.api.ContentResponse;
@@ -47,12 +51,20 @@ public class ApiTest {
     }
 
     @Test
-    @Disabled
     public void should_get_users() throws Exception {
         startServer(UserResource.class);
 
         ContentResponse response = httpClient.GET("http://localhost:8080/users");
         assertEquals("John", response.getContentAsString());
+    }
+
+    @Test
+    @Disabled
+    public void should_get_path_arg_from_uri() throws Exception {
+        startServer(ProjectResource.class);
+
+        ContentResponse response = httpClient.GET("http://localhost:8080/projects/1");
+        assertEquals("CRM-1", response.getContentAsString());
     }
 }
 
@@ -74,12 +86,21 @@ class UserResource {
     }
 }
 
+@Path("/projects")
+class ProjectResource {
+    @GET
+    @Path(("/{id}"))
+    public String findProjectById(@PathParam(value = "id") long projectId) {
+        return "CRM-" + projectId;
+    }
+}
+
 
 @Path("/users")
 class Users {
 
     @GET
-    public List<User> all(@QueryParam("start")int start, @QueryParam("size")int size) {
+    public List<User> all(@QueryParam("start") int start, @QueryParam("size") int size) {
         ArrayList<User> users = new ArrayList<>();
         users.add(new User());
         return users;
@@ -87,7 +108,7 @@ class Users {
 
     @GET
     @Path("{id}")
-    public User findById(@PathParam("id")long id) {
+    public User findById(@PathParam("id") long id) {
         return null;
     }
 
@@ -103,12 +124,12 @@ class Orders {
 
     @GET
     public List<Order> all() {
-        return  null;
+        return null;
     }
 
     @GET
     @Path("{id}")
-    public Order findById(@PathParam("id")long id) {
+    public Order findById(@PathParam("id") long id) {
         return null;
     }
 }
@@ -117,28 +138,28 @@ class Orders {
 class Sellers {
 
     @GET
-    public List<User> all(@QueryParam("start")int start, @QueryParam("size")int size) {
+    public List<User> all(@QueryParam("start") int start, @QueryParam("size") int size) {
         return null;
     }
 
     @GET
     @Path("{id}")
     @Produces(MediaType.WILDCARD)
-    public User findByIdAny(@PathParam("id")long id) {
+    public User findByIdAny(@PathParam("id") long id) {
         return null;
     }
 
     @GET
     @Path("{id}")
     @Produces(MediaType.APPLICATION_JSON)
-    public User findById(@PathParam("id")long id) {
+    public User findById(@PathParam("id") long id) {
         return null;
     }
 
     @GET
     @Path("{id}")
     @Produces(MediaType.APPLICATION_XML)
-    public User findByIdXML(@PathParam("id")long id) {
+    public User findByIdXML(@PathParam("id") long id) {
         return null;
     }
 
