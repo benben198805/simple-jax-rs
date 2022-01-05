@@ -3,6 +3,7 @@ package simple.jax.rs;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.ws.rs.Path;
+import jakarta.ws.rs.PathParam;
 import org.junit.jupiter.api.Test;
 import org.mockito.Mockito;
 
@@ -54,7 +55,7 @@ public class HandleTest {
     }
 
     @Test
-    public void should_3() throws NoSuchMethodException, IOException {
+    public void should_invoke_method() throws NoSuchMethodException, IOException {
         URITable table = Mockito.mock(URITable.class);
         Mockito.when(table.get(Mockito.any())).thenReturn(this.getClass().getDeclaredMethod("test"));
 
@@ -72,9 +73,36 @@ public class HandleTest {
         assertEquals("Test", writer.toString());
     }
 
+    @Test
+    public void should_invoke_method_with_path_params() throws NoSuchMethodException, IOException {
+        URITable table = Mockito.mock(URITable.class);
+        Mockito.when(table.get(Mockito.any())).thenReturn(this.getClass().getDeclaredMethod("findProjectById", long.class));
+        Map<String, ?> params = new HashMap<>() {{
+            put("id", 1);
+        }};
+        Mockito.<Map<String, ?>>when(table.getPathParams(Mockito.any())).thenReturn(params);
+
+        HttpServletRequest request = Mockito.mock(HttpServletRequest.class);
+        Mockito.when(request.getPathInfo()).thenReturn("/projects/1");
+
+        HttpServletResponse response = Mockito.mock(HttpServletResponse.class);
+        StringWriter writer = new StringWriter();
+        Mockito.when(response.getWriter()).thenReturn(new PrintWriter(writer));
+
+        Dispatcher dispatcher = new Dispatcher(table);
+
+        dispatcher.handle(request, response);
+
+        assertEquals("1", writer.toString());
+    }
+
 
     public String test() {
         return "Test";
+    }
+
+    public String findProjectById(@PathParam("id") long id) {
+        return String.valueOf(id);
     }
 
     static class Dispatcher {
@@ -86,10 +114,11 @@ public class HandleTest {
 
         public void handle(HttpServletRequest request, HttpServletResponse response) {
             Method method = table.get(request.getPathInfo());
+            Map<String, ?> pathParams = table.getPathParams(request.getPathInfo());
 
             try {
                 Object o = method.getDeclaringClass().getDeclaredConstructors()[0].newInstance();
-                Object result = method.invoke(o);
+                Object result = method.invoke(o, pathParams.values().toArray());
                 response.getWriter().write(result.toString());
             } catch (Exception e) {
                 throw new RuntimeException(e);
@@ -127,6 +156,11 @@ public class HandleTest {
             }).findFirst().orElseThrow(RuntimeException::new);
 
             return resourceMethods.get(methodPath);
+        }
+
+        @Override
+        public Map<String, ?> getPathParams(String path) {
+            return new HashMap<>();
         }
 
         private String getMethodPathPattern(String key, Pattern pathParamsKey) {
