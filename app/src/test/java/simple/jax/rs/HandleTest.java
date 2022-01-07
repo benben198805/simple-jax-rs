@@ -4,7 +4,6 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.ws.rs.Path;
 import jakarta.ws.rs.PathParam;
-import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 import org.mockito.Mockito;
 
@@ -12,13 +11,14 @@ import java.io.IOException;
 import java.io.PrintWriter;
 import java.io.StringWriter;
 import java.lang.reflect.Method;
-import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+import java.util.stream.Collectors;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
@@ -39,7 +39,6 @@ public class HandleTest {
     }
 
     @Test
-    @Disabled
     public void should_invoke_method_with_path_params_for_whole_process() throws IOException {
         HttpServletRequest request = Mockito.mock(HttpServletRequest.class);
         Mockito.when(request.getPathInfo()).thenReturn("/projects/1");
@@ -77,9 +76,9 @@ public class HandleTest {
     public void should_get_path_params_form_dispatcher_table_with_path_params() {
         DispatcherTable dispatcherTable = new DispatcherTable(ProjectResource.class);
 
-        Map<String, ?> resourceMethod = dispatcherTable.getPathParams("/projects/1");
-        assertNotNull(resourceMethod);
-        assertEquals("1", resourceMethod.get("id"));
+        DispatcherMethod dispatcherMethod = dispatcherTable.getDispatcherMethod("/projects/1");
+        assertNotNull(dispatcherMethod.getParams());
+        assertEquals(long.class, dispatcherMethod.getParams().get("id"));
     }
 
     @Test
@@ -146,7 +145,12 @@ public class HandleTest {
 
             try {
                 Object o = method.getDeclaringClass().getDeclaredConstructors()[0].newInstance();
-                Object result = method.invoke(o, pathParams.values().toArray());
+                Object result;
+                if (Objects.isNull(pathParams)) {
+                    result = method.invoke(o);
+                } else {
+                    result = method.invoke(o, pathParams.values().toArray());
+                }
                 response.getWriter().write(result.toString());
             } catch (Exception e) {
                 throw new RuntimeException(e);
@@ -154,10 +158,64 @@ public class HandleTest {
         }
     }
 
+    static public class DispatcherMethod<T> {
+        private Method method;
+        private Map<String, Class<T>> params = new HashMap<>();
+
+        public Method getMethod() {
+            return method;
+        }
+
+        public Map<String, Class<T>> getParams() {
+            return params;
+        }
+
+        public DispatcherMethod(Method method) {
+            this.method = method;
+
+            Arrays.stream(method.getParameters())
+                  .filter(parameter -> parameter.isAnnotationPresent(PathParam.class))
+                  .forEach(parameter -> {
+                      String key = parameter.getAnnotation(PathParam.class).value();
+                      this.params.put(key, (Class<T>) parameter.getType());
+                  });
+        }
+    }
+
+    static public class DispatcherPath {
+        private Pattern pathPattern;
+        private String rawPath;
+
+        public DispatcherPath(String path) {
+            this.rawPath = path;
+            Pattern pattern = Pattern.compile("\\{\\w+\\}");
+
+            StringBuffer stringBuffer = new StringBuffer();
+            Matcher pathParamsMatcher = pattern.matcher(path);
+            while (pathParamsMatcher.find()) {
+                pathParamsMatcher.appendReplacement(stringBuffer, "(\\\\w+)");
+            }
+            pathParamsMatcher.appendTail(stringBuffer);
+            this.pathPattern = Pattern.compile(stringBuffer.toString());
+        }
+
+        public boolean isMatch(String path) {
+            return this.pathPattern.matcher(path).find();
+        }
+
+        public Pattern getPathPattern() {
+            return pathPattern;
+        }
+
+        public String getRawPath() {
+            return rawPath;
+        }
+    }
+
 
     static class DispatcherTable implements URITable {
 
-        private Map<String, Method> resourceMethods = new HashMap<>();
+        private Map<DispatcherPath, DispatcherMethod> resourceMethods = new HashMap<>();
 
         public DispatcherTable(Class<?> resources) {
             Path path = resources.getAnnotation(Path.class);
@@ -165,78 +223,47 @@ public class HandleTest {
             Arrays.stream(resources.getDeclaredMethods()).forEach(method -> {
                 if (method.isAnnotationPresent(Path.class)) {
                     String subPath = method.getAnnotation(Path.class).value();
-                    resourceMethods.put(path.value() + subPath, method);
+                    resourceMethods.put(new DispatcherPath(path.value() + subPath), new DispatcherMethod(method));
                 } else {
-                    resourceMethods.put(path.value(), method);
+                    resourceMethods.put(new DispatcherPath(path.value()), new DispatcherMethod(method));
                 }
             });
         }
 
         @Override
         public Method get(String path) {
-            String methodPath = resourceMethods.keySet().stream().filter(key -> {
-                Pattern pathParamsKey = Pattern.compile("\\{\\w+\\}");
-                String methodPathPattern = getMethodPathPattern(key, pathParamsKey);
+            DispatcherPath dispatcherPath = resourceMethods.keySet().stream().filter(key -> key.isMatch(path))
+                                                           .findFirst().orElseThrow(RuntimeException::new);
 
-                Pattern pattern = Pattern.compile(methodPathPattern);
-                Matcher matcher = pattern.matcher(path);
-                return matcher.find();
-            }).findFirst().orElseThrow(RuntimeException::new);
-
-            return resourceMethods.get(methodPath);
+            return resourceMethods.get(dispatcherPath).getMethod();
         }
 
         @Override
         public Map<String, ?> getPathParams(String path) {
-            HashMap<String, Object> pathParams = new HashMap<>();
-            List<String> keyList = new ArrayList<>();
-            List<String> valueList = new ArrayList<>();
-
-            String methodPathKey = resourceMethods.keySet().stream().filter(key -> {
-                Pattern pathParamsKey = Pattern.compile("\\{\\w+\\}");
-                String methodPathPattern = getMethodPathPattern(key, pathParamsKey);
-
-                Pattern pattern = Pattern.compile(methodPathPattern);
-                Matcher matcher = pattern.matcher(path);
-                return matcher.find();
-            }).findFirst().orElseThrow(RuntimeException::new);
-
-            Pattern pathParamsKey = Pattern.compile("\\{(\\w+)\\}");
-
-            StringBuffer stringBuffer = new StringBuffer();
-            Matcher pathParamsMatcher = pathParamsKey.matcher(methodPathKey);
-
-            while (pathParamsMatcher.find()) {
-                keyList.add(pathParamsMatcher.group(1));
-                pathParamsMatcher.appendReplacement(stringBuffer, "(\\\\w+)");
-            }
-            pathParamsMatcher.appendTail(stringBuffer);
-            String methodPathPattern = stringBuffer.toString();
-
-            Pattern pattern = Pattern.compile(methodPathPattern);
-            Matcher matcher = pattern.matcher(path);
-
-            while (matcher.find()) {
-                if (matcher.groupCount() > 0) {
-                    valueList.add(matcher.group(1));
+            DispatcherPath dispatcherPath = resourceMethods.keySet().stream().filter(key -> key.isMatch(path))
+                                                           .findFirst().orElseThrow(RuntimeException::new);
+            Pattern pathPattern = dispatcherPath.getPathPattern();
+            Matcher matcher = pathPattern.matcher(path);
+            Map<String, Class> params = resourceMethods.get(dispatcherPath).getParams();
+            List<String> keys = Arrays.stream(params.keySet().toArray()).map(Object::toString).collect(Collectors.toList());
+            matcher.find();
+            Map<String, Object> result = new HashMap<>();
+            for (int index = 1; index < matcher.groupCount() + 1; index++) {
+                String key = keys.get(index - 1);
+                String group = matcher.group(index);
+                if (params.get(key).equals(long.class)) {
+                    long value = Long.parseLong(group);
+                    result.put(key, value);
                 }
             }
-
-            for (int index = 0; index < keyList.size(); index++) {
-                pathParams.put(keyList.get(index), valueList.get(index));
-            }
-
-            return pathParams;
+            return result;
         }
 
-        private String getMethodPathPattern(String key, Pattern pathParamsKey) {
-            StringBuffer stringBuffer = new StringBuffer();
-            Matcher pathParamsMatcher = pathParamsKey.matcher(key);
-            while (pathParamsMatcher.find()) {
-                pathParamsMatcher.appendReplacement(stringBuffer, "(\\\\w+)");
-            }
-            pathParamsMatcher.appendTail(stringBuffer);
-            return stringBuffer.toString();
+        public DispatcherMethod getDispatcherMethod(String path) {
+            DispatcherPath dispatcherPath = resourceMethods.keySet().stream().filter(key -> key.isMatch(path))
+                                                           .findFirst().orElseThrow(RuntimeException::new);
+
+            return resourceMethods.get(dispatcherPath);
         }
     }
 
