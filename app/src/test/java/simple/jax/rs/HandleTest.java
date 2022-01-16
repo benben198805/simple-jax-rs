@@ -397,14 +397,18 @@ public class HandleTest {
         }
 
         private String getMethodPatternPath(String path) {
+            String pathWithoutQueryParams = path.indexOf("?") > 0 ? path.substring(0, path.indexOf("?")) : path;
+
             return resourceMethods.keySet()
                                   .stream()
                                   .sorted(Comparator.comparingInt(String::length).reversed())
                                   .filter(key -> {
                                       Pattern pathParamsKey = Pattern.compile("\\{\\w+\\}");
-                                      String methodPathPattern = getMethodPathPattern(key, pathParamsKey);
+                                      String methodPathPattern = getMethodPathPattern(key,
+                                              pathParamsKey);
                                       Pattern pattern = Pattern.compile(methodPathPattern);
-                                      Matcher matcher = pattern.matcher(path);
+                                      Matcher matcher =
+                                              pattern.matcher(pathWithoutQueryParams);
                                       return matcher.find();
                                   }).findFirst().orElseThrow(() -> new RuntimeException("not found match method"));
         }
@@ -413,10 +417,10 @@ public class HandleTest {
             StringBuilder stringBuilder = new StringBuilder();
             Matcher pathParamsMatcher = pathParamsKey.matcher(key);
             while (pathParamsMatcher.find()) {
-                pathParamsMatcher.appendReplacement(stringBuilder, "\\\\w");
+                pathParamsMatcher.appendReplacement(stringBuilder, "\\\\w+");
             }
             pathParamsMatcher.appendTail(stringBuilder);
-            return stringBuilder.toString();
+            return stringBuilder + "$";
         }
     }
 }
