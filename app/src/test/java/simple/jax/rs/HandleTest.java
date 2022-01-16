@@ -23,6 +23,8 @@ import java.util.stream.Collectors;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 public class HandleTest {
     @Test
@@ -77,6 +79,17 @@ public class HandleTest {
         assertNotNull(executableMethod);
         assertEquals("findProjectById", executableMethod.getMethod().getName());
         assertEquals(1l, executableMethod.getParams().get("id"));
+    }
+
+    @Test
+    public void should_throw_exception_when_not_found_method() {
+        DispatcherTable dispatcherTable = new DispatcherTable(ProjectResource.class);
+
+        Exception exception = assertThrows(RuntimeException.class, () -> {
+            dispatcherTable.getExecutableMethod("/projects-abc/1");
+        });
+
+        assertTrue(exception.getMessage().contains("not found match method"));
     }
 
     @Test
