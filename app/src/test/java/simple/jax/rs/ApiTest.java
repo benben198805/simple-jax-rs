@@ -61,12 +61,11 @@ public class ApiTest {
     }
 
     @Test
-    @Disabled
     public void should_get_project_by_id() throws Exception {
         startServer(ProjectResource.class);
 
         ContentResponse response = httpClient.GET("http://localhost:8080/projects/1");
-        assertEquals("CRM-1", response.getContentAsString());
+        assertEquals((new Project("CRM-1")).toString(), response.getContentAsString());
     }
 }
 
