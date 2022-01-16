@@ -278,7 +278,8 @@ public class HandleTest {
         }
 
         public void handle(HttpServletRequest request, HttpServletResponse response) {
-            ExecutableMethod executableMethod = table.getExecutableMethod(request.getPathInfo());
+            ExecutableMethod executableMethod =
+                    table.getExecutableMethod(request.getPathInfo() + "?" + request.getQueryString());
             Method method = executableMethod.getMethod();
             Map<String, Object> params = executableMethod.getParams();
 

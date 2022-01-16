@@ -78,7 +78,6 @@ public class ApiTest {
     }
 
     @Test
-    @Disabled
     public void should_query_project_by_query_params() throws Exception {
         startServer(ProjectResource.class);
 
