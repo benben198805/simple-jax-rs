@@ -8,6 +8,9 @@ import jakarta.ws.rs.QueryParam;
 import org.junit.jupiter.api.Test;
 import org.mockito.Mockito;
 import simple.jax.rs.dto.ExecutableMethod;
+import simple.jax.rs.resources.GroupResource;
+import simple.jax.rs.resources.NameResource;
+import simple.jax.rs.resources.ProjectResource;
 
 import java.io.IOException;
 import java.io.PrintWriter;

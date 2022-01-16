@@ -14,6 +14,10 @@ import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 import simple.jax.rs.dto.test.Group;
 import simple.jax.rs.dto.test.Project;
+import simple.jax.rs.resources.GroupResource;
+import simple.jax.rs.resources.NameResource;
+import simple.jax.rs.resources.ProjectResource;
+import simple.jax.rs.resources.UserResource;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -99,60 +103,6 @@ public class ApiTest {
         groups.add(new Group("GROUP-active"));
         groups.add(new Group("GROUP-init"));
         assertEquals(groups.toString(), response.getContentAsString());
-    }
-}
-
-@Path("/name")
-class NameResource {
-
-    @GET
-    public String name() {
-        return "name";
-    }
-}
-
-@Path("/users")
-class UserResource {
-
-    @GET
-    public String users() {
-        return "John";
-    }
-}
-
-@Path("/projects")
-class ProjectResource {
-
-    @GET
-    @Path("{id}")
-    public Project findProjectById(@PathParam("id") long id) {
-        return new Project("CRM-" + id);
-    }
-
-    @GET
-    @Path("{id}/items/{itemName}")
-    public Project findProjectByIdAndItemName(@PathParam("id") long id, @PathParam("itemName") String itemName) {
-        return new Project("CRM-" + id + "(" + itemName + ")");
-    }
-
-    @GET
-    public List<Project> all(@QueryParam("start") int start, @QueryParam("size") int size) {
-        ArrayList<Project> projects = new ArrayList<>();
-        projects.add(new Project("CRM-" + start));
-        projects.add(new Project("CRM-" + size));
-        return projects;
-    }
-}
-
-@Path("/groups")
-class GroupResource {
-    @GET
-    public List<Group> all(@QueryParam("status") List<String> statusList) {
-        ArrayList<Group> groups = new ArrayList<>();
-        for (String status : statusList) {
-            groups.add(new Group("GROUP-" + status));
-        }
-        return groups;
     }
 }
 
