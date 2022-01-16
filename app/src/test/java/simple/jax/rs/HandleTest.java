@@ -49,7 +49,10 @@ public class HandleTest {
     public void should_2() {
         DispatcherTable dispatcherTable = new DispatcherTable(NameResource.class);
 
-        ExecutableMethod executableMethod = dispatcherTable.getExecutableMethod("/name");
+        HttpServletRequest request = Mockito.mock(HttpServletRequest.class);
+        Mockito.when(request.getPathInfo()).thenReturn("/name");
+
+        ExecutableMethod executableMethod = dispatcherTable.getExecutableMethod(request);
         assertNotNull(executableMethod);
         assertEquals("name", executableMethod.getMethod().getName());
     }
@@ -57,7 +60,7 @@ public class HandleTest {
     @Test
     public void should_3() throws NoSuchMethodException, IOException {
         URITable table = Mockito.mock(URITable.class);
-        Mockito.when(table.getExecutableMethod(Mockito.any()))
+        Mockito.when(table.getExecutableMethod(Mockito.any(String.class)))
                .thenReturn(new ExecutableMethod(this.getClass().getDeclaredMethod("test"), new HashMap<>()));
 
         HttpServletRequest request = Mockito.mock(HttpServletRequest.class);
@@ -78,7 +81,10 @@ public class HandleTest {
     public void should_get_method_with_path_param() {
         DispatcherTable dispatcherTable = new DispatcherTable(ProjectResource.class);
 
-        ExecutableMethod executableMethod = dispatcherTable.getExecutableMethod("/projects/1");
+        HttpServletRequest request = Mockito.mock(HttpServletRequest.class);
+        Mockito.when(request.getPathInfo()).thenReturn("/projects/1");
+
+        ExecutableMethod executableMethod = dispatcherTable.getExecutableMethod(request);
         assertNotNull(executableMethod);
         assertEquals("findProjectById", executableMethod.getMethod().getName());
         assertEquals(1l, executableMethod.getParams().get("id"));
@@ -88,8 +94,12 @@ public class HandleTest {
     public void should_throw_exception_when_not_found_method() {
         DispatcherTable dispatcherTable = new DispatcherTable(ProjectResource.class);
 
+
+        HttpServletRequest request = Mockito.mock(HttpServletRequest.class);
+        Mockito.when(request.getPathInfo()).thenReturn("/projects-abc/1");
+
         Exception exception = assertThrows(RuntimeException.class,
-                () -> dispatcherTable.getExecutableMethod("/projects-abc/1"));
+                () -> dispatcherTable.getExecutableMethod(request));
 
         assertTrue(exception.getMessage().contains("not found match method"));
     }
@@ -98,8 +108,11 @@ public class HandleTest {
     public void should_throw_exception_when_can_not_cast_params() {
         DispatcherTable dispatcherTable = new DispatcherTable(ProjectResource.class);
 
+        HttpServletRequest request = Mockito.mock(HttpServletRequest.class);
+        Mockito.when(request.getPathInfo()).thenReturn("/projects/abc");
+
         Exception exception = assertThrows(RuntimeException.class,
-                () -> dispatcherTable.getExecutableMethod("/projects/abc"));
+                () -> dispatcherTable.getExecutableMethod(request));
 
         assertTrue(exception.getMessage().contains("can not cast params"));
     }
@@ -107,7 +120,7 @@ public class HandleTest {
     @Test
     public void should_run_method_with_path_param() throws NoSuchMethodException, IOException {
         URITable table = Mockito.mock(URITable.class);
-        Mockito.when(table.getExecutableMethod(Mockito.any()))
+        Mockito.when(table.getExecutableMethod(Mockito.any(String.class)))
                .thenReturn(new ExecutableMethod(this.getClass().getDeclaredMethod("findProjectById",
                        long.class), new HashMap<>() {{
                    put("id", 1l);
@@ -131,7 +144,10 @@ public class HandleTest {
     public void should_get_method_with_multiple_path_param() {
         DispatcherTable dispatcherTable = new DispatcherTable(ProjectResource.class);
 
-        ExecutableMethod executableMethod = dispatcherTable.getExecutableMethod("/projects/1/items/ieu927");
+        HttpServletRequest request = Mockito.mock(HttpServletRequest.class);
+        Mockito.when(request.getPathInfo()).thenReturn("/projects/1/items/ieu927");
+
+        ExecutableMethod executableMethod = dispatcherTable.getExecutableMethod(request);
         assertNotNull(executableMethod);
         assertEquals("findProjectByIdAndItemName", executableMethod.getMethod().getName());
         assertEquals(1l, executableMethod.getParams().get("id"));
@@ -141,7 +157,7 @@ public class HandleTest {
     @Test
     public void should_run_method_with_multiple_path_param() throws NoSuchMethodException, IOException {
         URITable table = Mockito.mock(URITable.class);
-        Mockito.when(table.getExecutableMethod(Mockito.any()))
+        Mockito.when(table.getExecutableMethod(Mockito.any(String.class)))
                .thenReturn(new ExecutableMethod(this.getClass().getDeclaredMethod("findProjectByIdAndItemName",
                        long.class, String.class), new LinkedHashMap<>() {{
                    put("id", 1l);
@@ -166,7 +182,11 @@ public class HandleTest {
     public void should_get_method_with_query_params() {
         DispatcherTable dispatcherTable = new DispatcherTable(ProjectResource.class);
 
-        ExecutableMethod executableMethod = dispatcherTable.getExecutableMethod("/projects?start=1&size=10");
+        HttpServletRequest request = Mockito.mock(HttpServletRequest.class);
+        Mockito.when(request.getPathInfo()).thenReturn("/projects");
+        Mockito.when(request.getQueryString()).thenReturn("start=1&size=10");
+
+        ExecutableMethod executableMethod = dispatcherTable.getExecutableMethod(request);
         assertNotNull(executableMethod);
         assertEquals("all", executableMethod.getMethod().getName());
         assertEquals(1, executableMethod.getParams().get("start"));
@@ -177,8 +197,12 @@ public class HandleTest {
     public void should_throw_exception_when_query_params_not_found() {
         DispatcherTable dispatcherTable = new DispatcherTable(ProjectResource.class);
 
+        HttpServletRequest request = Mockito.mock(HttpServletRequest.class);
+        Mockito.when(request.getPathInfo()).thenReturn("/projects");
+        Mockito.when(request.getQueryString()).thenReturn("start=1");
+
         Exception exception = assertThrows(RuntimeException.class,
-                () -> dispatcherTable.getExecutableMethod("/projects?start=1"));
+                () -> dispatcherTable.getExecutableMethod(request));
 
         assertTrue(exception.getMessage().contains("not found query params: size"));
     }
@@ -187,8 +211,12 @@ public class HandleTest {
     public void should_throw_exception_when_query_params_is_empty() {
         DispatcherTable dispatcherTable = new DispatcherTable(ProjectResource.class);
 
+        HttpServletRequest request = Mockito.mock(HttpServletRequest.class);
+        Mockito.when(request.getPathInfo()).thenReturn("/projects");
+        Mockito.when(request.getQueryString()).thenReturn("start=&size=2");
+
         Exception exception = assertThrows(RuntimeException.class,
-                () -> dispatcherTable.getExecutableMethod("/projects?start=&size=2"));
+                () -> dispatcherTable.getExecutableMethod(request));
 
         assertTrue(exception.getMessage().contains("query params can not be empty"));
     }
@@ -197,7 +225,12 @@ public class HandleTest {
     public void should_get_method_with_list_query_params() {
         DispatcherTable dispatcherTable = new DispatcherTable(GroupResource.class);
 
-        ExecutableMethod executableMethod = dispatcherTable.getExecutableMethod("/groups?status=active&status=init");
+
+        HttpServletRequest request = Mockito.mock(HttpServletRequest.class);
+        Mockito.when(request.getPathInfo()).thenReturn("/groups");
+        Mockito.when(request.getQueryString()).thenReturn("status=active&status=init");
+
+        ExecutableMethod executableMethod = dispatcherTable.getExecutableMethod(request);
         assertNotNull(executableMethod);
         assertEquals("all", executableMethod.getMethod().getName());
         assertEquals(List.of("active", "init"), executableMethod.getParams().get("status"));
@@ -206,7 +239,7 @@ public class HandleTest {
     @Test
     public void should_run_method_with_query_param() throws NoSuchMethodException, IOException {
         URITable table = Mockito.mock(URITable.class);
-        Mockito.when(table.getExecutableMethod(Mockito.any()))
+        Mockito.when(table.getExecutableMethod(Mockito.any(String.class)))
                .thenReturn(new ExecutableMethod(this.getClass().getDeclaredMethod("all",
                        int.class, int.class), new LinkedHashMap<>() {{
                    put("start", 1);
@@ -230,7 +263,7 @@ public class HandleTest {
     @Test
     public void should_run_method_with_list_query_param() throws NoSuchMethodException, IOException {
         URITable table = Mockito.mock(URITable.class);
-        Mockito.when(table.getExecutableMethod(Mockito.any()))
+        Mockito.when(table.getExecutableMethod(Mockito.any(String.class)))
                .thenReturn(new ExecutableMethod(this.getClass().getDeclaredMethod("all",
                        List.class), new LinkedHashMap<>() {{
                    put("status", List.of("active", "init"));
@@ -315,6 +348,75 @@ public class HandleTest {
             Map<String, Object> pathParams = this.getParams(methodPath, method, path);
 
             return new ExecutableMethod(method, pathParams);
+        }
+
+        @Override
+        public ExecutableMethod getExecutableMethod(HttpServletRequest request) {
+            String path = request.getPathInfo();
+
+            String methodPath = this.getMethodPatternPath(path);
+
+            Method method = resourceMethods.get(methodPath);
+
+            Map<String, Object> pathParams = this.getParams(methodPath, method, request);
+
+            return new ExecutableMethod(method, pathParams);
+        }
+
+        private Map<String, Object> getParams(String methodPatternPath, Method method, HttpServletRequest request) {
+            String path = request.getPathInfo();
+            HashMap<String, Object> params = new LinkedHashMap<>();
+            List<Parameter> pathParamList = List.of(method.getParameters());
+
+            pathParamList.forEach(parameter -> {
+                if (parameter.isAnnotationPresent(PathParam.class)) {
+                    String key = parameter.getAnnotation(PathParam.class).value();
+                    String patternStr = methodPatternPath.replace("{" + key + "}", "(\\w+)")
+                                                         .replaceAll("\\{\\w+\\}", "\\\\w+");
+
+                    Pattern pattern = Pattern.compile(patternStr);
+                    Matcher matcher = pattern.matcher(path);
+
+                    matcher.find();
+                    if (matcher.groupCount() > 0) {
+                        Object value = parseParameterValue(matcher.group(1), parameter);
+                        params.put(key, value);
+                    }
+                } else if (parameter.isAnnotationPresent(QueryParam.class)) {
+                    String queryKey = parameter.getAnnotation(QueryParam.class).value();
+                    String queryStr = request.getQueryString();
+                    List<String> queryParamStrWithKeys = Arrays.stream(queryStr.split("&"))
+                                                               .filter(it -> it.contains(queryKey + "="))
+                                                               .collect(Collectors.toList());
+
+                    if (queryParamStrWithKeys.isEmpty()) {
+                        throw new RuntimeException("not found query params: " + queryKey);
+                    }
+
+
+                    if (parameter.getType().equals(List.class)) {
+                        List<String> values = queryParamStrWithKeys.stream()
+                                                                   .map(queryParamStrWithKey -> {
+                                                                       String[] splitQuery =
+                                                                               queryParamStrWithKey.split("=");
+                                                                       return splitQuery[1];
+                                                                   })
+                                                                   .filter(it -> !it.isEmpty())
+                                                                   .collect(Collectors.toList());
+                        params.put(queryKey, values);
+                    } else {
+                        String[] splitQuery = queryParamStrWithKeys.get(0).split("=");
+
+                        if (splitQuery.length != 2) {
+                            throw new RuntimeException("query params can not be empty");
+                        }
+
+                        params.put(queryKey, parseParameterValue(splitQuery[1], parameter));
+                    }
+                }
+            });
+
+            return params;
         }
 
         private Map<String, Object> getParams(String methodPatternPath, Method method, String path) {
