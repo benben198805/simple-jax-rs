@@ -22,6 +22,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+import java.util.stream.Collectors;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
@@ -193,6 +194,16 @@ public class HandleTest {
     }
 
     @Test
+    public void should_get_method_with_list_query_params() {
+        DispatcherTable dispatcherTable = new DispatcherTable(GroupResource.class);
+
+        ExecutableMethod executableMethod = dispatcherTable.getExecutableMethod("/groups?status=active&status=init");
+        assertNotNull(executableMethod);
+        assertEquals("all", executableMethod.getMethod().getName());
+        assertEquals(List.of("active", "init"), executableMethod.getParams().get("status"));
+    }
+
+    @Test
     public void should_run_method_with_query_param() throws NoSuchMethodException, IOException {
         URITable table = Mockito.mock(URITable.class);
         Mockito.when(table.getExecutableMethod(Mockito.any()))
@@ -279,7 +290,7 @@ public class HandleTest {
         }
 
         private Map<String, Object> getParams(String methodPatternPath, Method method, String path) {
-            HashMap<String, Object> pathParams = new LinkedHashMap<>();
+            HashMap<String, Object> params = new LinkedHashMap<>();
             List<Parameter> pathParamList = List.of(method.getParameters());
 
             pathParamList.forEach(parameter -> {
@@ -294,28 +305,43 @@ public class HandleTest {
                     matcher.find();
                     if (matcher.groupCount() > 0) {
                         Object value = parseParameterValue(matcher.group(1), parameter);
-                        pathParams.put(key, value);
+                        params.put(key, value);
                     }
                 } else if (parameter.isAnnotationPresent(QueryParam.class)) {
                     String queryKey = parameter.getAnnotation(QueryParam.class).value();
                     String queryStr = path.substring(path.indexOf("?") + 1);
-                    String queryParamStrWithKey = Arrays.stream(queryStr.split("&"))
-                                                        .filter(it -> it.contains(queryKey + "="))
-                                                        .findFirst().orElseThrow(() -> new RuntimeException("not " +
-                                    "found query params: " + queryKey));
+                    List<String> queryParamStrWithKeys = Arrays.stream(queryStr.split("&"))
+                                                               .filter(it -> it.contains(queryKey + "="))
+                                                               .collect(Collectors.toList());
 
-                    String[] splitQuery = queryParamStrWithKey.split("=");
-
-                    if (splitQuery.length != 2) {
-                        throw new RuntimeException("query params can not be empty");
+                    if (queryParamStrWithKeys.isEmpty()) {
+                        throw new RuntimeException("not found query params: " + queryKey);
                     }
 
-                    if (!pathParams.containsKey(queryKey))
-                        pathParams.put(queryKey, parseParameterValue(splitQuery[1], parameter));
+
+                    if (parameter.getType().equals(List.class)) {
+                        List<String> values = queryParamStrWithKeys.stream()
+                                                                   .map(queryParamStrWithKey -> {
+                                                                       String[] splitQuery =
+                                                                               queryParamStrWithKey.split("=");
+                                                                       return splitQuery[1];
+                                                                   })
+                                                                   .filter(it -> !it.isEmpty())
+                                                                   .collect(Collectors.toList());
+                        params.put(queryKey, values);
+                    } else {
+                        String[] splitQuery = queryParamStrWithKeys.get(0).split("=");
+
+                        if (splitQuery.length != 2) {
+                            throw new RuntimeException("query params can not be empty");
+                        }
+
+                        params.put(queryKey, parseParameterValue(splitQuery[1], parameter));
+                    }
                 }
             });
 
-            return pathParams;
+            return params;
         }
 
         private Object parseParameterValue(String value, Parameter parameter) {

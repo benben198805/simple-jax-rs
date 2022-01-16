@@ -12,6 +12,7 @@ import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
+import simple.jax.rs.dto.test.Group;
 import simple.jax.rs.dto.test.Project;
 
 import java.util.ArrayList;
@@ -129,6 +130,18 @@ class ProjectResource {
         projects.add(new Project("CRM-" + start));
         projects.add(new Project("CRM-" + size));
         return projects;
+    }
+}
+
+@Path("/groups")
+class GroupResource {
+    @GET
+    public List<Group> all(@QueryParam("status") List<String> statusList) {
+        ArrayList<Group> groups = new ArrayList<>();
+        for (String status : statusList) {
+            groups.add(new Group("GROUP-" + status));
+        }
+        return groups;
     }
 }
 
