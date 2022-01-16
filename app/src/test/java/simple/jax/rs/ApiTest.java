@@ -75,6 +75,19 @@ public class ApiTest {
         ContentResponse response = httpClient.GET("http://localhost:8080/projects/1/items/abc");
         assertEquals((new Project("CRM-1(abc)")).toString(), response.getContentAsString());
     }
+
+    @Test
+    @Disabled
+    public void should_query_project_by_query_params() throws Exception {
+        startServer(ProjectResource.class);
+
+        ContentResponse response = httpClient.GET("http://localhost:8080/projects?start=1&size=10");
+
+        ArrayList<Project> projects = new ArrayList<>();
+        projects.add(new Project("CRM-1"));
+        projects.add(new Project("CRM-10"));
+        assertEquals(projects.toString(), response.getContentAsString());
+    }
 }
 
 @Path("/name")
@@ -108,6 +121,14 @@ class ProjectResource {
     @Path("{id}/items/{itemName}")
     public Project findProjectByIdAndItemName(@PathParam("id") long id, @PathParam("itemName") String itemName) {
         return new Project("CRM-" + id + "(" + itemName + ")");
+    }
+
+    @GET
+    public List<Project> all(@QueryParam("start") int start, @QueryParam("size") int size) {
+        ArrayList<Project> projects = new ArrayList<>();
+        projects.add(new Project("CRM-" + start));
+        projects.add(new Project("CRM-" + size));
+        return projects;
     }
 }
 

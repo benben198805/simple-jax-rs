@@ -4,6 +4,7 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.ws.rs.Path;
 import jakarta.ws.rs.PathParam;
+import jakarta.ws.rs.QueryParam;
 import org.junit.jupiter.api.Test;
 import org.mockito.Mockito;
 import simple.jax.rs.dto.ExecutableMethod;
@@ -161,6 +162,17 @@ public class HandleTest {
         assertEquals("CRM-1(ieu927)", writer.toString());
     }
 
+    @Test
+    public void should_get_method_with_query_params() {
+        DispatcherTable dispatcherTable = new DispatcherTable(ProjectResource.class);
+
+        ExecutableMethod executableMethod = dispatcherTable.getExecutableMethod("/projects?start=1&size=10");
+        assertNotNull(executableMethod);
+        assertEquals("all", executableMethod.getMethod().getName());
+        assertEquals(1, executableMethod.getParams().get("start"));
+        assertEquals(10, executableMethod.getParams().get("size"));
+    }
+
     public String test() {
         return "Test";
     }
@@ -214,29 +226,38 @@ public class HandleTest {
 
             Method method = resourceMethods.get(methodPath);
 
-            Map<String, Object> pathParams = this.getPathParams(methodPath, method, path);
+            Map<String, Object> pathParams = this.getParams(methodPath, method, path);
 
             return new ExecutableMethod(method, pathParams);
         }
 
-        private Map<String, Object> getPathParams(String methodPatternPath, Method method, String path) {
+        private Map<String, Object> getParams(String methodPatternPath, Method method, String path) {
             HashMap<String, Object> pathParams = new LinkedHashMap<>();
-            List<Parameter> pathParamList = Arrays.stream(method.getParameters())
-                                                  .filter(it -> it.isAnnotationPresent(PathParam.class))
-                                                  .collect(Collectors.toList());
+            List<Parameter> pathParamList = List.of(method.getParameters());
 
             pathParamList.forEach(parameter -> {
-                String key = parameter.getAnnotation(PathParam.class).value();
-                String patternStr = methodPatternPath.replace("{" + key + "}", "(\\w+)")
-                                                     .replaceAll("\\{\\w+\\}", "\\\\w+");
+                if (parameter.isAnnotationPresent(PathParam.class)) {
+                    String key = parameter.getAnnotation(PathParam.class).value();
+                    String patternStr = methodPatternPath.replace("{" + key + "}", "(\\w+)")
+                                                         .replaceAll("\\{\\w+\\}", "\\\\w+");
 
-                Pattern pattern = Pattern.compile(patternStr);
-                Matcher matcher = pattern.matcher(path);
+                    Pattern pattern = Pattern.compile(patternStr);
+                    Matcher matcher = pattern.matcher(path);
 
-                matcher.find();
-                if (matcher.groupCount() > 0) {
-                    Object value = parseParameterValue(matcher.group(1), parameter);
-                    pathParams.put(key, value);
+                    matcher.find();
+                    if (matcher.groupCount() > 0) {
+                        Object value = parseParameterValue(matcher.group(1), parameter);
+                        pathParams.put(key, value);
+                    }
+                } else if (parameter.isAnnotationPresent(QueryParam.class)) {
+                    String queryStr = path.substring(path.indexOf("?") + 1);
+                    Arrays.stream(queryStr.split("&")).collect(Collectors.toList()).forEach(it -> {
+                        String[] split = it.split("=");
+                        String queryName = split[0];
+                        String queryValue = split[1];
+                        if (!pathParams.containsKey(queryName))
+                            pathParams.put(queryName, parseParameterValue(queryValue, parameter));
+                    });
                 }
             });
 
@@ -247,6 +268,9 @@ public class HandleTest {
             try {
                 if (long.class.equals(parameter.getType())) {
                     return Long.parseLong(value);
+                }
+                if (int.class.equals(parameter.getType())) {
+                    return Integer.parseInt(value);
                 }
                 return value;
             } catch (RuntimeException e) {
