@@ -1,9 +1,7 @@
 package simple.jax.rs;
 
-import java.lang.reflect.Method;
+import simple.jax.rs.dto.ExecutableMethod;
 
 public interface URITable {
-    Method get(String path);
-
-    String getMethodPatternPath(String path);
+    ExecutableMethod getExecutableMethod(String path);
 }

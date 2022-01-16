@@ -6,6 +6,7 @@ import jakarta.ws.rs.Path;
 import jakarta.ws.rs.PathParam;
 import org.junit.jupiter.api.Test;
 import org.mockito.Mockito;
+import simple.jax.rs.dto.ExecutableMethod;
 
 import java.io.IOException;
 import java.io.PrintWriter;
@@ -43,15 +44,16 @@ public class HandleTest {
     public void should_2() {
         DispatcherTable dispatcherTable = new DispatcherTable(NameResource.class);
 
-        Method resourceMethod = dispatcherTable.get("/name");
-        assertNotNull(resourceMethod);
-        assertEquals("name", resourceMethod.getName());
+        ExecutableMethod executableMethod = dispatcherTable.getExecutableMethod("/name");
+        assertNotNull(executableMethod);
+        assertEquals("name", executableMethod.getMethod().getName());
     }
 
     @Test
     public void should_3() throws NoSuchMethodException, IOException {
         URITable table = Mockito.mock(URITable.class);
-        Mockito.when(table.get(Mockito.any())).thenReturn(this.getClass().getDeclaredMethod("test"));
+        Mockito.when(table.getExecutableMethod(Mockito.any()))
+               .thenReturn(new ExecutableMethod(this.getClass().getDeclaredMethod("test"), new HashMap<>()));
 
         HttpServletRequest request = Mockito.mock(HttpServletRequest.class);
         Mockito.when(request.getPathInfo()).thenReturn("/name");
@@ -68,20 +70,23 @@ public class HandleTest {
     }
 
     @Test
-    public void should_method_with_path_param() {
+    public void should_get_method_with_path_param() {
         DispatcherTable dispatcherTable = new DispatcherTable(ProjectResource.class);
 
-        Method resourceMethod = dispatcherTable.get("/projects/1");
-        assertNotNull(resourceMethod);
-        assertEquals("findProjectById", resourceMethod.getName());
+        ExecutableMethod executableMethod = dispatcherTable.getExecutableMethod("/projects/1");
+        assertNotNull(executableMethod);
+        assertEquals("findProjectById", executableMethod.getMethod().getName());
+        assertEquals(1l, executableMethod.getParams().get("id"));
     }
 
     @Test
     public void should_run_method_with_path_param() throws NoSuchMethodException, IOException {
         URITable table = Mockito.mock(URITable.class);
-        Mockito.when(table.get(Mockito.any())).thenReturn(this.getClass().getDeclaredMethod("findProjectById",
-                long.class));
-        Mockito.when(table.getMethodPatternPath(Mockito.any())).thenReturn("projects/{id}");
+        Mockito.when(table.getExecutableMethod(Mockito.any()))
+               .thenReturn(new ExecutableMethod(this.getClass().getDeclaredMethod("findProjectById",
+                       long.class), new HashMap<>() {{
+                   put("id", 1l);
+               }}));
 
         HttpServletRequest request = Mockito.mock(HttpServletRequest.class);
         Mockito.when(request.getPathInfo()).thenReturn("/projects/1");
@@ -113,21 +118,45 @@ public class HandleTest {
         }
 
         public void handle(HttpServletRequest request, HttpServletResponse response) {
-            Method method = table.get(request.getPathInfo());
-            String methodPatternPath = table.getMethodPatternPath(request.getPathInfo());
-
-            Map<String, ?> methodParams = getPathParams(methodPatternPath, method, request.getPathInfo());
+            ExecutableMethod executableMethod = table.getExecutableMethod(request.getPathInfo());
+            Method method = executableMethod.getMethod();
+            Map<String, Object> params = executableMethod.getParams();
 
             try {
                 Object o = method.getDeclaringClass().getDeclaredConstructors()[0].newInstance();
-                Object result = method.invoke(o, methodParams.values().toArray());
+                Object result = method.invoke(o, params.values().toArray());
                 response.getWriter().write(result.toString());
             } catch (Exception e) {
                 throw new RuntimeException(e);
             }
         }
 
-        private Map<String, ?> getPathParams(String methodPatternPath, Method method, String path) {
+    }
+
+    static class DispatcherTable implements URITable {
+        private final Map<String, Method> resourceMethods = new HashMap<>();
+
+        public DispatcherTable(Class<?> resources) {
+            Path path = resources.getAnnotation(Path.class);
+
+            Arrays.stream(resources.getDeclaredMethods()).forEach(method -> {
+                String methodPath = composeMethodPath(method, path);
+                resourceMethods.put(methodPath, method);
+            });
+        }
+
+        @Override
+        public ExecutableMethod getExecutableMethod(String path) {
+            String methodPath = this.getMethodPatternPath(path);
+
+            Method method = resourceMethods.get(methodPath);
+
+            Map<String, Object> pathParams = this.getPathParams(methodPath, method, path);
+
+            return new ExecutableMethod(method, pathParams);
+        }
+
+        private Map<String, Object> getPathParams(String methodPatternPath, Method method, String path) {
             HashMap<String, Object> pathParams = new HashMap<>();
             List<Parameter> pathParamList = Arrays.stream(method.getParameters())
                                                   .filter(it -> it.isAnnotationPresent(PathParam.class))
@@ -156,19 +185,6 @@ public class HandleTest {
             }
             return value;
         }
-    }
-
-    static class DispatcherTable implements URITable {
-        private final Map<String, Method> resourceMethods = new HashMap<>();
-
-        public DispatcherTable(Class<?> resources) {
-            Path path = resources.getAnnotation(Path.class);
-
-            Arrays.stream(resources.getDeclaredMethods()).forEach(method -> {
-                String methodPath = composeMethodPath(method, path);
-                resourceMethods.put(methodPath, method);
-            });
-        }
 
         private String composeMethodPath(Method method, Path path) {
             String classPath = path.value();
@@ -181,14 +197,7 @@ public class HandleTest {
             }
         }
 
-        @Override
-        public Method get(String path) {
-            String methodPath = this.getMethodPatternPath(path);
-            return resourceMethods.get(methodPath);
-        }
-
-        @Override
-        public String getMethodPatternPath(String path) {
+        private String getMethodPatternPath(String path) {
             return resourceMethods.keySet()
                                   .stream().filter(key -> {
                         Pattern pathParamsKey = Pattern.compile("\\{\\w+\\}");

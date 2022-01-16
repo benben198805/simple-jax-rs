@@ -12,7 +12,7 @@ import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
-import simple.jax.rs.dto.Project;
+import simple.jax.rs.dto.test.Project;
 
 import java.util.ArrayList;
 import java.util.List;

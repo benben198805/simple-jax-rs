@@ -1,4 +1,4 @@
-package simple.jax.rs.dto;
+package simple.jax.rs.dto.test;
 
 public class Project {
     private String name;
