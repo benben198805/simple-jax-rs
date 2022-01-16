@@ -14,7 +14,9 @@ import java.io.StringWriter;
 import java.lang.reflect.Method;
 import java.lang.reflect.Parameter;
 import java.util.Arrays;
+import java.util.Comparator;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.regex.Matcher;
@@ -124,12 +126,51 @@ public class HandleTest {
         assertEquals("CRM-1", writer.toString());
     }
 
+    @Test
+    public void should_get_method_with_multiple_path_param() {
+        DispatcherTable dispatcherTable = new DispatcherTable(ProjectResource.class);
+
+        ExecutableMethod executableMethod = dispatcherTable.getExecutableMethod("/projects/1/items/ieu927");
+        assertNotNull(executableMethod);
+        assertEquals("findProjectByIdAndItemName", executableMethod.getMethod().getName());
+        assertEquals(1l, executableMethod.getParams().get("id"));
+        assertEquals("ieu927", executableMethod.getParams().get("itemName"));
+    }
+
+    @Test
+    public void should_run_method_with_multiple_path_param() throws NoSuchMethodException, IOException {
+        URITable table = Mockito.mock(URITable.class);
+        Mockito.when(table.getExecutableMethod(Mockito.any()))
+               .thenReturn(new ExecutableMethod(this.getClass().getDeclaredMethod("findProjectByIdAndItemName",
+                       long.class, String.class), new LinkedHashMap<>() {{
+                   put("id", 1l);
+                   put("itemName", "ieu927");
+               }}));
+
+        HttpServletRequest request = Mockito.mock(HttpServletRequest.class);
+        Mockito.when(request.getPathInfo()).thenReturn("/projects/1/items/ieu927");
+
+        HttpServletResponse response = Mockito.mock(HttpServletResponse.class);
+        StringWriter writer = new StringWriter();
+        Mockito.when(response.getWriter()).thenReturn(new PrintWriter(writer));
+
+        Dispatcher dispatcher = new Dispatcher(table);
+
+        dispatcher.handle(request, response);
+
+        assertEquals("CRM-1(ieu927)", writer.toString());
+    }
+
     public String test() {
         return "Test";
     }
 
     public String findProjectById(@PathParam("id") long id) {
         return "CRM-" + id;
+    }
+
+    public String findProjectByIdAndItemName(@PathParam("id") long id, @PathParam("itemName") String itemName) {
+        return "CRM-" + id + "(" + itemName + ")";
     }
 
     static class Dispatcher {
@@ -179,14 +220,15 @@ public class HandleTest {
         }
 
         private Map<String, Object> getPathParams(String methodPatternPath, Method method, String path) {
-            HashMap<String, Object> pathParams = new HashMap<>();
+            HashMap<String, Object> pathParams = new LinkedHashMap<>();
             List<Parameter> pathParamList = Arrays.stream(method.getParameters())
                                                   .filter(it -> it.isAnnotationPresent(PathParam.class))
                                                   .collect(Collectors.toList());
 
             pathParamList.forEach(parameter -> {
                 String key = parameter.getAnnotation(PathParam.class).value();
-                String patternStr = methodPatternPath.replace("{" + key + "}", "(\\w+)");
+                String patternStr = methodPatternPath.replace("{" + key + "}", "(\\w+)")
+                                                     .replaceAll("\\{\\w+\\}", "\\\\w+");
 
                 Pattern pattern = Pattern.compile(patternStr);
                 Matcher matcher = pattern.matcher(path);
@@ -225,14 +267,15 @@ public class HandleTest {
 
         private String getMethodPatternPath(String path) {
             return resourceMethods.keySet()
-                                  .stream().filter(key -> {
-                        Pattern pathParamsKey = Pattern.compile("\\{\\w+\\}");
-                        String methodPathPattern = getMethodPathPattern(key, pathParamsKey);
-
-                        Pattern pattern = Pattern.compile(methodPathPattern);
-                        Matcher matcher = pattern.matcher(path);
-                        return matcher.find();
-                    }).findFirst().orElseThrow(() -> new RuntimeException("not found match method"));
+                                  .stream()
+                                  .sorted(Comparator.comparingInt(String::length).reversed())
+                                  .filter(key -> {
+                                      Pattern pathParamsKey = Pattern.compile("\\{\\w+\\}");
+                                      String methodPathPattern = getMethodPathPattern(key, pathParamsKey);
+                                      Pattern pattern = Pattern.compile(methodPathPattern);
+                                      Matcher matcher = pattern.matcher(path);
+                                      return matcher.find();
+                                  }).findFirst().orElseThrow(() -> new RuntimeException("not found match method"));
         }
 
         private String getMethodPathPattern(String key, Pattern pathParamsKey) {

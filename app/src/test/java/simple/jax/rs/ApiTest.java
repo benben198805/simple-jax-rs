@@ -95,6 +95,12 @@ class ProjectResource {
     public Project findProjectById(@PathParam("id") long id) {
         return new Project("CRM-" + id);
     }
+
+    @GET
+    @Path("{id}/items/{itemName}")
+    public Project findProjectByIdAndItemName(@PathParam("id") long id, @PathParam("itemName") String itemName) {
+        return new Project("CRM-" + id + "(" + itemName + ")");
+    }
 }
 
 
