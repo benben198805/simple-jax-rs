@@ -183,6 +183,16 @@ public class HandleTest {
     }
 
     @Test
+    public void should_throw_exception_when_query_params_is_empty() {
+        DispatcherTable dispatcherTable = new DispatcherTable(ProjectResource.class);
+
+        Exception exception = assertThrows(RuntimeException.class,
+                () -> dispatcherTable.getExecutableMethod("/projects?start=&size=2"));
+
+        assertTrue(exception.getMessage().contains("query params can not be empty"));
+    }
+
+    @Test
     public void should_run_method_with_query_param() throws NoSuchMethodException, IOException {
         URITable table = Mockito.mock(URITable.class);
         Mockito.when(table.getExecutableMethod(Mockito.any()))
@@ -295,6 +305,11 @@ public class HandleTest {
                                     "found query params: " + queryKey));
 
                     String[] splitQuery = queryParamStrWithKey.split("=");
+
+                    if (splitQuery.length != 2) {
+                        throw new RuntimeException("query params can not be empty");
+                    }
+
                     if (!pathParams.containsKey(queryKey))
                         pathParams.put(queryKey, parseParameterValue(splitQuery[1], parameter));
                 }
