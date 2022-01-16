@@ -10,8 +10,11 @@ import java.io.IOException;
 import java.io.PrintWriter;
 import java.io.StringWriter;
 import java.lang.reflect.Method;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
@@ -30,7 +33,6 @@ public class HandleTest {
 
         assertEquals("name", writer.toString());
     }
-
 
 
     @Test
@@ -61,6 +63,15 @@ public class HandleTest {
         assertEquals("Test", writer.toString());
     }
 
+    @Test
+    public void should_method_with_path_param() {
+        DispatcherTable dispatcherTable = new DispatcherTable(ProjectResource.class);
+
+        Method resourceMethod = dispatcherTable.get("/projects/1");
+        assertNotNull(resourceMethod);
+        assertEquals("findProjectById", resourceMethod.getName());
+    }
+
     public String test() {
         return "Test";
     }
@@ -87,17 +98,51 @@ public class HandleTest {
 
 
     static class DispatcherTable implements URITable {
-
-        private Map<String, Method> resourceMethods = new HashMap<>();
+        private final Map<String, Method> resourceMethods = new HashMap<>();
 
         public DispatcherTable(Class<?> resources) {
             Path path = resources.getAnnotation(Path.class);
-            resourceMethods.put(path.value(), resources.getDeclaredMethods()[0]);
+
+            Arrays.stream(resources.getDeclaredMethods()).forEach(method -> {
+                String methodPath = composeMethodPath(method, path);
+                resourceMethods.put(methodPath, method);
+            });
+        }
+
+        private String composeMethodPath(Method method, Path path) {
+            String classPath = path.value();
+            if (method.isAnnotationPresent(Path.class)) {
+                String subPath = method.getAnnotation(Path.class).value();
+                String additionalSlash = subPath.startsWith("/") ? "" : "/";
+                return classPath + additionalSlash + subPath;
+            } else {
+                return classPath;
+            }
         }
 
         @Override
         public Method get(String path) {
-            return resourceMethods.get(path);
+            String methodPath = resourceMethods.keySet()
+                                               .stream().filter(key -> {
+                        Pattern pathParamsKey = Pattern.compile("\\{\\w+\\}");
+                        String methodPathPattern = getMethodPathPattern(key, pathParamsKey);
+
+                        Pattern pattern = Pattern.compile(methodPathPattern);
+                        Matcher matcher = pattern.matcher(path);
+                        return matcher.find();
+                    }).findFirst().orElseThrow(() -> new RuntimeException("not found match method"));
+
+            return resourceMethods.get(methodPath);
+        }
+
+        private String getMethodPathPattern(String key, Pattern pathParamsKey) {
+            StringBuilder stringBuilder = new StringBuilder();
+            Matcher pathParamsMatcher = pathParamsKey.matcher(key);
+            while (pathParamsMatcher.find()) {
+                pathParamsMatcher.appendReplacement(stringBuilder, "\\\\w");
+            }
+            pathParamsMatcher.appendTail(stringBuilder);
+            return stringBuilder.toString();
         }
     }
 
