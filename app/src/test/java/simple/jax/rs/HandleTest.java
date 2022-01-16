@@ -3,6 +3,7 @@ package simple.jax.rs;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.ws.rs.Path;
+import jakarta.ws.rs.PathParam;
 import org.junit.jupiter.api.Test;
 import org.mockito.Mockito;
 
@@ -10,11 +11,14 @@ import java.io.IOException;
 import java.io.PrintWriter;
 import java.io.StringWriter;
 import java.lang.reflect.Method;
+import java.lang.reflect.Parameter;
 import java.util.Arrays;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+import java.util.stream.Collectors;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
@@ -72,8 +76,33 @@ public class HandleTest {
         assertEquals("findProjectById", resourceMethod.getName());
     }
 
+    @Test
+    public void should_run_method_with_path_param() throws NoSuchMethodException, IOException {
+        URITable table = Mockito.mock(URITable.class);
+        Mockito.when(table.get(Mockito.any())).thenReturn(this.getClass().getDeclaredMethod("findProjectById",
+                long.class));
+        Mockito.when(table.getMethodPatternPath(Mockito.any())).thenReturn("projects/{id}");
+
+        HttpServletRequest request = Mockito.mock(HttpServletRequest.class);
+        Mockito.when(request.getPathInfo()).thenReturn("/projects/1");
+
+        HttpServletResponse response = Mockito.mock(HttpServletResponse.class);
+        StringWriter writer = new StringWriter();
+        Mockito.when(response.getWriter()).thenReturn(new PrintWriter(writer));
+
+        Dispatcher dispatcher = new Dispatcher(table);
+
+        dispatcher.handle(request, response);
+
+        assertEquals("CRM-1", writer.toString());
+    }
+
     public String test() {
         return "Test";
+    }
+
+    public String findProjectById(@PathParam("id") long id) {
+        return "CRM-" + id;
     }
 
     static class Dispatcher {
@@ -85,17 +114,49 @@ public class HandleTest {
 
         public void handle(HttpServletRequest request, HttpServletResponse response) {
             Method method = table.get(request.getPathInfo());
+            String methodPatternPath = table.getMethodPatternPath(request.getPathInfo());
+
+            Map<String, ?> methodParams = getPathParams(methodPatternPath, method, request.getPathInfo());
 
             try {
                 Object o = method.getDeclaringClass().getDeclaredConstructors()[0].newInstance();
-                Object result = method.invoke(o);
+                Object result = method.invoke(o, methodParams.values().toArray());
                 response.getWriter().write(result.toString());
             } catch (Exception e) {
                 throw new RuntimeException(e);
             }
         }
-    }
 
+        private Map<String, ?> getPathParams(String methodPatternPath, Method method, String path) {
+            HashMap<String, Object> pathParams = new HashMap<>();
+            List<Parameter> pathParamList = Arrays.stream(method.getParameters())
+                                                  .filter(it -> it.isAnnotationPresent(PathParam.class))
+                                                  .collect(Collectors.toList());
+
+            pathParamList.forEach(parameter -> {
+                String key = parameter.getAnnotation(PathParam.class).value();
+                String patternStr = methodPatternPath.replace("{" + key + "}", "(\\w+)");
+
+                Pattern pattern = Pattern.compile(patternStr);
+                Matcher matcher = pattern.matcher(path);
+
+                matcher.find();
+                if (matcher.groupCount() > 0) {
+                    Object value = parseValue(matcher.group(1), parameter);
+                    pathParams.put(key, value);
+                }
+            });
+
+            return pathParams;
+        }
+
+        private Object parseValue(String value, Parameter parameter) {
+            if (long.class.equals(parameter.getType())) {
+                return Long.parseLong(value);
+            }
+            return value;
+        }
+    }
 
     static class DispatcherTable implements URITable {
         private final Map<String, Method> resourceMethods = new HashMap<>();
@@ -122,8 +183,14 @@ public class HandleTest {
 
         @Override
         public Method get(String path) {
-            String methodPath = resourceMethods.keySet()
-                                               .stream().filter(key -> {
+            String methodPath = this.getMethodPatternPath(path);
+            return resourceMethods.get(methodPath);
+        }
+
+        @Override
+        public String getMethodPatternPath(String path) {
+            return resourceMethods.keySet()
+                                  .stream().filter(key -> {
                         Pattern pathParamsKey = Pattern.compile("\\{\\w+\\}");
                         String methodPathPattern = getMethodPathPattern(key, pathParamsKey);
 
@@ -131,8 +198,6 @@ public class HandleTest {
                         Matcher matcher = pattern.matcher(path);
                         return matcher.find();
                     }).findFirst().orElseThrow(() -> new RuntimeException("not found match method"));
-
-            return resourceMethods.get(methodPath);
         }
 
         private String getMethodPathPattern(String key, Pattern pathParamsKey) {
@@ -145,6 +210,4 @@ public class HandleTest {
             return stringBuilder.toString();
         }
     }
-
-
 }
