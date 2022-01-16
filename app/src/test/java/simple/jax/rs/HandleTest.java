@@ -173,6 +173,30 @@ public class HandleTest {
         assertEquals(10, executableMethod.getParams().get("size"));
     }
 
+    @Test
+    public void should_run_method_with_query_param() throws NoSuchMethodException, IOException {
+        URITable table = Mockito.mock(URITable.class);
+        Mockito.when(table.getExecutableMethod(Mockito.any()))
+               .thenReturn(new ExecutableMethod(this.getClass().getDeclaredMethod("all",
+                       int.class, int.class), new LinkedHashMap<>() {{
+                   put("start", 1);
+                   put("size", 10);
+               }}));
+
+        HttpServletRequest request = Mockito.mock(HttpServletRequest.class);
+        Mockito.when(request.getPathInfo()).thenReturn("/projects?start=1&size=10");
+
+        HttpServletResponse response = Mockito.mock(HttpServletResponse.class);
+        StringWriter writer = new StringWriter();
+        Mockito.when(response.getWriter()).thenReturn(new PrintWriter(writer));
+
+        Dispatcher dispatcher = new Dispatcher(table);
+
+        dispatcher.handle(request, response);
+
+        assertEquals("CRM-1(10)", writer.toString());
+    }
+
     public String test() {
         return "Test";
     }
@@ -183,6 +207,10 @@ public class HandleTest {
 
     public String findProjectByIdAndItemName(@PathParam("id") long id, @PathParam("itemName") String itemName) {
         return "CRM-" + id + "(" + itemName + ")";
+    }
+
+    public String all(@QueryParam("start") int start, @QueryParam("size") int size) {
+        return "CRM-" + start + "(" + size + ")";
     }
 
     static class Dispatcher {
