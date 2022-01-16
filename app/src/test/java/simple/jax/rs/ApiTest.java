@@ -67,6 +67,14 @@ public class ApiTest {
         ContentResponse response = httpClient.GET("http://localhost:8080/projects/1");
         assertEquals((new Project("CRM-1")).toString(), response.getContentAsString());
     }
+
+    @Test
+    public void should_get_project_by_id_and_item_name() throws Exception {
+        startServer(ProjectResource.class);
+
+        ContentResponse response = httpClient.GET("http://localhost:8080/projects/1/items/abc");
+        assertEquals((new Project("CRM-1(abc)")).toString(), response.getContentAsString());
+    }
 }
 
 @Path("/name")
