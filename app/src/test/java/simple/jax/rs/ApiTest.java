@@ -88,6 +88,18 @@ public class ApiTest {
         projects.add(new Project("CRM-10"));
         assertEquals(projects.toString(), response.getContentAsString());
     }
+
+    @Test
+    public void should_query_project_by_list_query_params() throws Exception {
+        startServer(GroupResource.class);
+
+        ContentResponse response = httpClient.GET("http://localhost:8080/groups?status=active&status=init");
+
+        ArrayList<Group> groups = new ArrayList<>();
+        groups.add(new Group("GROUP-active"));
+        groups.add(new Group("GROUP-init"));
+        assertEquals(groups.toString(), response.getContentAsString());
+    }
 }
 
 @Path("/name")
