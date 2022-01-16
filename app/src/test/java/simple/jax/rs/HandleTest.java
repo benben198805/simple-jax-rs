@@ -22,7 +22,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
-import java.util.stream.Collectors;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
@@ -174,6 +173,16 @@ public class HandleTest {
     }
 
     @Test
+    public void should_throw_exception_when_query_params_not_found() {
+        DispatcherTable dispatcherTable = new DispatcherTable(ProjectResource.class);
+
+        Exception exception = assertThrows(RuntimeException.class,
+                () -> dispatcherTable.getExecutableMethod("/projects?start=1"));
+
+        assertTrue(exception.getMessage().contains("not found query params: size"));
+    }
+
+    @Test
     public void should_run_method_with_query_param() throws NoSuchMethodException, IOException {
         URITable table = Mockito.mock(URITable.class);
         Mockito.when(table.getExecutableMethod(Mockito.any()))
@@ -278,14 +287,16 @@ public class HandleTest {
                         pathParams.put(key, value);
                     }
                 } else if (parameter.isAnnotationPresent(QueryParam.class)) {
+                    String queryKey = parameter.getAnnotation(QueryParam.class).value();
                     String queryStr = path.substring(path.indexOf("?") + 1);
-                    Arrays.stream(queryStr.split("&")).collect(Collectors.toList()).forEach(it -> {
-                        String[] split = it.split("=");
-                        String queryName = split[0];
-                        String queryValue = split[1];
-                        if (!pathParams.containsKey(queryName))
-                            pathParams.put(queryName, parseParameterValue(queryValue, parameter));
-                    });
+                    String queryParamStrWithKey = Arrays.stream(queryStr.split("&"))
+                                                        .filter(it -> it.contains(queryKey + "="))
+                                                        .findFirst().orElseThrow(() -> new RuntimeException("not " +
+                                    "found query params: " + queryKey));
+
+                    String[] splitQuery = queryParamStrWithKey.split("=");
+                    if (!pathParams.containsKey(queryKey))
+                        pathParams.put(queryKey, parseParameterValue(splitQuery[1], parameter));
                 }
             });
 
