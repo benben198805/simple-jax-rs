@@ -85,11 +85,20 @@ public class HandleTest {
     public void should_throw_exception_when_not_found_method() {
         DispatcherTable dispatcherTable = new DispatcherTable(ProjectResource.class);
 
-        Exception exception = assertThrows(RuntimeException.class, () -> {
-            dispatcherTable.getExecutableMethod("/projects-abc/1");
-        });
+        Exception exception = assertThrows(RuntimeException.class,
+                () -> dispatcherTable.getExecutableMethod("/projects-abc/1"));
 
         assertTrue(exception.getMessage().contains("not found match method"));
+    }
+
+    @Test
+    public void should_throw_exception_when_can_not_cast_params() {
+        DispatcherTable dispatcherTable = new DispatcherTable(ProjectResource.class);
+
+        Exception exception = assertThrows(RuntimeException.class,
+                () -> dispatcherTable.getExecutableMethod("/projects/abc"));
+
+        assertTrue(exception.getMessage().contains("can not cast params"));
     }
 
     @Test
@@ -184,7 +193,7 @@ public class HandleTest {
 
                 matcher.find();
                 if (matcher.groupCount() > 0) {
-                    Object value = parseValue(matcher.group(1), parameter);
+                    Object value = parseParameterValue(matcher.group(1), parameter);
                     pathParams.put(key, value);
                 }
             });
@@ -192,11 +201,15 @@ public class HandleTest {
             return pathParams;
         }
 
-        private Object parseValue(String value, Parameter parameter) {
-            if (long.class.equals(parameter.getType())) {
-                return Long.parseLong(value);
+        private Object parseParameterValue(String value, Parameter parameter) {
+            try {
+                if (long.class.equals(parameter.getType())) {
+                    return Long.parseLong(value);
+                }
+                return value;
+            } catch (RuntimeException e) {
+                throw new RuntimeException("can not cast params");
             }
-            return value;
         }
 
         private String composeMethodPath(Method method, Path path) {
