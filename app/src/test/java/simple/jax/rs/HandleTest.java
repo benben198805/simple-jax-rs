@@ -227,6 +227,29 @@ public class HandleTest {
         assertEquals("CRM-1(10)", writer.toString());
     }
 
+    @Test
+    public void should_run_method_with_list_query_param() throws NoSuchMethodException, IOException {
+        URITable table = Mockito.mock(URITable.class);
+        Mockito.when(table.getExecutableMethod(Mockito.any()))
+               .thenReturn(new ExecutableMethod(this.getClass().getDeclaredMethod("all",
+                       List.class), new LinkedHashMap<>() {{
+                   put("status", List.of("active", "init"));
+               }}));
+
+        HttpServletRequest request = Mockito.mock(HttpServletRequest.class);
+        Mockito.when(request.getPathInfo()).thenReturn("/groups?status=active&status=init");
+
+        HttpServletResponse response = Mockito.mock(HttpServletResponse.class);
+        StringWriter writer = new StringWriter();
+        Mockito.when(response.getWriter()).thenReturn(new PrintWriter(writer));
+
+        Dispatcher dispatcher = new Dispatcher(table);
+
+        dispatcher.handle(request, response);
+
+        assertEquals("CRM-active|init", writer.toString());
+    }
+
     public String test() {
         return "Test";
     }
@@ -241,6 +264,10 @@ public class HandleTest {
 
     public String all(@QueryParam("start") int start, @QueryParam("size") int size) {
         return "CRM-" + start + "(" + size + ")";
+    }
+
+    public String all(@QueryParam("status") List<String> statusList) {
+        return "CRM-" + statusList.stream().collect(Collectors.joining("|"));
     }
 
     static class Dispatcher {
