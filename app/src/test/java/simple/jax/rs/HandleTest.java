@@ -7,6 +7,7 @@ import jakarta.ws.rs.QueryParam;
 import org.junit.jupiter.api.Test;
 import org.mockito.Mockito;
 import simple.jax.rs.dto.ExecutableMethod;
+import simple.jax.rs.resources.ErrorProjectResource;
 import simple.jax.rs.resources.GroupResource;
 import simple.jax.rs.resources.MemberResource;
 import simple.jax.rs.resources.NameResource;
@@ -298,6 +299,14 @@ public class HandleTest {
     public void should_throw_exception_when_not_find_sub_resource_by_locator() {
         Exception exception = assertThrows(RuntimeException.class,
                 () -> new DispatcherTable(new Class[]{MemberResource.class}));
+
+        assertTrue(exception.getMessage().contains("not find sub-resource by locators: "));
+    }
+
+    @Test
+    public void should_throw_exception_when_sub_resource_locator_annotated_http_method() {
+        Exception exception = assertThrows(RuntimeException.class,
+                () -> new DispatcherTable(new Class[]{MemberResource.class, ErrorProjectResource.class}));
 
         assertTrue(exception.getMessage().contains("not find sub-resource by locators: "));
     }

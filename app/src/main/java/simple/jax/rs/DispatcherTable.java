@@ -2,6 +2,7 @@ package simple.jax.rs;
 
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.ws.rs.Path;
+import org.eclipse.jetty.http.HttpMethod;
 import simple.jax.rs.dto.ExecutableMethod;
 
 import java.lang.reflect.Method;
@@ -28,10 +29,16 @@ public class DispatcherTable implements URITable {
         if (Objects.nonNull(classPath)) {
             initDispatcherTableByResource(resource, classPath.value());
         } else {
+            HttpMethod[] httpMethods = HttpMethod.values();
+
             Map.Entry<String, Method> parentMethodResource = resourceMethods
                     .entrySet()
                     .stream()
-                    .filter(entry -> Objects.equals(resource, entry.getValue().getReturnType()))
+                    .filter(entry -> Objects.equals(resource, entry.getValue().getReturnType())
+                            && Arrays.stream(entry.getValue().getAnnotations())
+                                     .noneMatch(annotation -> Arrays.asList(httpMethods)
+                                                                    .contains(HttpMethod.fromString(annotation.annotationType().getSimpleName())))
+                    )
                     .findFirst()
                     .orElseThrow(() -> new RuntimeException("not find sub-resource by locators: " + resource));
 
