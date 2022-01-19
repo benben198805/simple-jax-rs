@@ -302,6 +302,29 @@ public class HandleTest {
         assertTrue(exception.getMessage().contains("not find sub-resource by locators: "));
     }
 
+    @Test
+    public void should_run_sub_resource_method() throws NoSuchMethodException, IOException {
+        URITable table = Mockito.mock(URITable.class);
+        Mockito.when(table.getExecutableMethod(Mockito.any(HttpServletRequest.class)))
+               .thenReturn(new ExecutableMethod(this.getClass().getDeclaredMethod("findMemberById",
+                       long.class), new LinkedHashMap<>() {{
+                   put("id", 9l);
+               }}));
+
+        HttpServletRequest request = Mockito.mock(HttpServletRequest.class);
+        Mockito.when(request.getPathInfo()).thenReturn("/projects/members/9");
+
+        HttpServletResponse response = Mockito.mock(HttpServletResponse.class);
+        StringWriter writer = new StringWriter();
+        Mockito.when(response.getWriter()).thenReturn(new PrintWriter(writer));
+
+        Dispatcher dispatcher = new Dispatcher(table);
+
+        dispatcher.handle(request, response);
+
+        assertEquals("MEMBER-9", writer.toString());
+    }
+
 
     public String test() {
         return "Test";
@@ -321,6 +344,10 @@ public class HandleTest {
 
     public String all(@QueryParam("status") List<String> statusList) {
         return "CRM-" + statusList.stream().collect(Collectors.joining("|"));
+    }
+
+    public String findMemberById(@PathParam("id") long id) {
+        return "MEMBER-" + id;
     }
 
 }
