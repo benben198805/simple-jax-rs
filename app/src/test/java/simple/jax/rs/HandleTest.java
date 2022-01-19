@@ -8,6 +8,7 @@ import org.junit.jupiter.api.Test;
 import org.mockito.Mockito;
 import simple.jax.rs.dto.ExecutableMethod;
 import simple.jax.rs.resources.GroupResource;
+import simple.jax.rs.resources.MemberResource;
 import simple.jax.rs.resources.NameResource;
 import simple.jax.rs.resources.ProjectResource;
 
@@ -279,6 +280,28 @@ public class HandleTest {
 
         assertEquals("CRM-active|init", writer.toString());
     }
+
+    @Test
+    public void should_get_method_with_sub_resource() {
+        DispatcherTable dispatcherTable = new DispatcherTable(new Class[]{MemberResource.class, ProjectResource.class});
+
+        HttpServletRequest request = Mockito.mock(HttpServletRequest.class);
+        Mockito.when(request.getPathInfo()).thenReturn("/projects/members/9");
+
+        ExecutableMethod executableMethod = dispatcherTable.getExecutableMethod(request);
+        assertNotNull(executableMethod);
+        assertEquals("findMemberById", executableMethod.getMethod().getName());
+        assertEquals(9l, executableMethod.getParams().get("id"));
+    }
+
+    @Test
+    public void should_throw_exception_when_not_find_sub_resource_by_locator() {
+        Exception exception = assertThrows(RuntimeException.class,
+                () -> new DispatcherTable(new Class[]{MemberResource.class}));
+
+        assertTrue(exception.getMessage().contains("not find sub-resource by locators: "));
+    }
+
 
     public String test() {
         return "Test";

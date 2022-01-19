@@ -12,6 +12,11 @@ import java.util.List;
 @Path("/projects")
 public class ProjectResource {
 
+    @Path("members")
+    public MemberResource getMember() {
+        return new MemberResource();
+    }
+
     @GET
     @Path("{id}")
     public Project findProjectById(@PathParam("id") long id) {

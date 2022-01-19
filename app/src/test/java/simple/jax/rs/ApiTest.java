@@ -7,8 +7,10 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 import simple.jax.rs.dto.test.Group;
+import simple.jax.rs.dto.test.Member;
 import simple.jax.rs.dto.test.Project;
 import simple.jax.rs.resources.GroupResource;
+import simple.jax.rs.resources.MemberResource;
 import simple.jax.rs.resources.NameResource;
 import simple.jax.rs.resources.ProjectResource;
 import simple.jax.rs.resources.UserResource;
@@ -96,5 +98,16 @@ public class ApiTest {
         groups.add(new Group("GROUP-active"));
         groups.add(new Group("GROUP-init"));
         assertEquals(groups.toString(), response.getContentAsString());
+    }
+
+    @Test
+    @Disabled
+    public void should_query_sub_resource() throws Exception {
+        startServer(ProjectResource.class, MemberResource.class);
+
+        ContentResponse response = httpClient.GET("http://localhost:8080/projects/members/1");
+
+        Member member = new Member("ben");
+        assertEquals(member.toString(), response.getContentAsString());
     }
 }

@@ -9,6 +9,7 @@ import java.util.Arrays;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Objects;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -16,12 +17,40 @@ public class DispatcherTable implements URITable {
     private final Map<String, Method> resourceMethods = new HashMap<>();
 
     public DispatcherTable(Class<?> resources) {
-        Path path = resources.getAnnotation(Path.class);
+        initDispatcherTable(resources);
+    }
 
-        Arrays.stream(resources.getDeclaredMethods()).forEach(method -> {
-            String methodPath = composeMethodPath(method, path);
+    private void initDispatcherTable(Class<?> resource) {
+        Path classPath = resource.getAnnotation(Path.class);
+
+        if (Objects.nonNull(classPath)) {
+            initDispatcherTableByResource(resource, classPath.value());
+        } else {
+            Map.Entry<String, Method> parentMethodResource = resourceMethods
+                    .entrySet()
+                    .stream()
+                    .filter(entry -> Objects.equals(resource, entry.getValue().getReturnType()))
+                    .findFirst()
+                    .orElseThrow(() -> new RuntimeException("not find sub-resource by locators: " + resource));
+
+            String parentPath = parentMethodResource.getKey();
+            resourceMethods.remove(parentPath);
+
+            initDispatcherTableByResource(resource, parentPath);
+        }
+    }
+
+    private void initDispatcherTableByResource(Class<?> resource, String parentPath) {
+        Arrays.stream(resource.getDeclaredMethods()).forEach(method -> {
+            String methodPath = composeMethodPath(method, parentPath);
             resourceMethods.put(methodPath, method);
         });
+    }
+
+    public DispatcherTable(Class[] resources) {
+        Arrays.stream(resources)
+              .sorted(Comparator.comparing(it -> !it.isAnnotationPresent(Path.class)))
+              .forEach(this::initDispatcherTable);
     }
 
     @Override
@@ -37,8 +66,7 @@ public class DispatcherTable implements URITable {
         return new ExecutableMethod(method, pathParams);
     }
 
-    private String composeMethodPath(Method method, Path path) {
-        String classPath = path.value();
+    private String composeMethodPath(Method method, String classPath) {
         if (method.isAnnotationPresent(Path.class)) {
             String subPath = method.getAnnotation(Path.class).value();
             String additionalSlash = subPath.startsWith("/") ? "" : "/";

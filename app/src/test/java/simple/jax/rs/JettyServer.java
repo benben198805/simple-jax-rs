@@ -39,7 +39,7 @@ public class JettyServer {
     }
 
     public static void handle(HttpServletRequest request, HttpServletResponse response, Class[] resources) {
-        Dispatcher dispatcher = new Dispatcher(new DispatcherTable(resources[0]));
+        Dispatcher dispatcher = new Dispatcher(new DispatcherTable(resources));
         dispatcher.handle(request, response);
 
     }
