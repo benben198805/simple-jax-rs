@@ -43,7 +43,7 @@ public class HandleTest {
 
     @Test
     public void should_2() {
-        DispatcherTable dispatcherTable = new DispatcherTable(NameResource.class);
+        DispatcherTable dispatcherTable = new DispatcherTable(new Class[]{NameResource.class});
 
         HttpServletRequest request = Mockito.mock(HttpServletRequest.class);
         Mockito.when(request.getPathInfo()).thenReturn("/name");
@@ -75,7 +75,7 @@ public class HandleTest {
 
     @Test
     public void should_get_method_with_path_param() {
-        DispatcherTable dispatcherTable = new DispatcherTable(ProjectResource.class);
+        DispatcherTable dispatcherTable = new DispatcherTable(new Class[]{ProjectResource.class});
 
         HttpServletRequest request = Mockito.mock(HttpServletRequest.class);
         Mockito.when(request.getPathInfo()).thenReturn("/projects/1");
@@ -88,7 +88,7 @@ public class HandleTest {
 
     @Test
     public void should_throw_exception_when_not_found_method() {
-        DispatcherTable dispatcherTable = new DispatcherTable(ProjectResource.class);
+        DispatcherTable dispatcherTable = new DispatcherTable(new Class[]{ProjectResource.class});
 
 
         HttpServletRequest request = Mockito.mock(HttpServletRequest.class);
@@ -102,7 +102,7 @@ public class HandleTest {
 
     @Test
     public void should_throw_exception_when_can_not_cast_params() {
-        DispatcherTable dispatcherTable = new DispatcherTable(ProjectResource.class);
+        DispatcherTable dispatcherTable = new DispatcherTable(new Class[]{ProjectResource.class});
 
         HttpServletRequest request = Mockito.mock(HttpServletRequest.class);
         Mockito.when(request.getPathInfo()).thenReturn("/projects/abc");
@@ -138,7 +138,7 @@ public class HandleTest {
 
     @Test
     public void should_get_method_with_multiple_path_param() {
-        DispatcherTable dispatcherTable = new DispatcherTable(ProjectResource.class);
+        DispatcherTable dispatcherTable = new DispatcherTable(new Class[]{ProjectResource.class});
 
         HttpServletRequest request = Mockito.mock(HttpServletRequest.class);
         Mockito.when(request.getPathInfo()).thenReturn("/projects/1/items/ieu927");
@@ -176,7 +176,7 @@ public class HandleTest {
 
     @Test
     public void should_get_method_with_query_params() {
-        DispatcherTable dispatcherTable = new DispatcherTable(ProjectResource.class);
+        DispatcherTable dispatcherTable = new DispatcherTable(new Class[]{ProjectResource.class});
 
         HttpServletRequest request = Mockito.mock(HttpServletRequest.class);
         Mockito.when(request.getPathInfo()).thenReturn("/projects");
@@ -191,7 +191,7 @@ public class HandleTest {
 
     @Test
     public void should_throw_exception_when_query_params_not_found() {
-        DispatcherTable dispatcherTable = new DispatcherTable(ProjectResource.class);
+        DispatcherTable dispatcherTable = new DispatcherTable(new Class[]{ProjectResource.class});
 
         HttpServletRequest request = Mockito.mock(HttpServletRequest.class);
         Mockito.when(request.getPathInfo()).thenReturn("/projects");
@@ -205,7 +205,7 @@ public class HandleTest {
 
     @Test
     public void should_throw_exception_when_query_params_is_empty() {
-        DispatcherTable dispatcherTable = new DispatcherTable(ProjectResource.class);
+        DispatcherTable dispatcherTable = new DispatcherTable(new Class[]{ProjectResource.class});
 
         HttpServletRequest request = Mockito.mock(HttpServletRequest.class);
         Mockito.when(request.getPathInfo()).thenReturn("/projects");
@@ -219,7 +219,7 @@ public class HandleTest {
 
     @Test
     public void should_get_method_with_list_query_params() {
-        DispatcherTable dispatcherTable = new DispatcherTable(GroupResource.class);
+        DispatcherTable dispatcherTable = new DispatcherTable(new Class[]{GroupResource.class});
 
 
         HttpServletRequest request = Mockito.mock(HttpServletRequest.class);

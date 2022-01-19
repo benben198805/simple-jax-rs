@@ -16,8 +16,10 @@ import java.util.regex.Pattern;
 public class DispatcherTable implements URITable {
     private final Map<String, Method> resourceMethods = new HashMap<>();
 
-    public DispatcherTable(Class<?> resources) {
-        initDispatcherTable(resources);
+    public DispatcherTable(Class[] resources) {
+        Arrays.stream(resources)
+              .sorted(Comparator.comparing(it -> !it.isAnnotationPresent(Path.class)))
+              .forEach(this::initDispatcherTable);
     }
 
     private void initDispatcherTable(Class<?> resource) {
@@ -45,12 +47,6 @@ public class DispatcherTable implements URITable {
             String methodPath = composeMethodPath(method, parentPath);
             resourceMethods.put(methodPath, method);
         });
-    }
-
-    public DispatcherTable(Class[] resources) {
-        Arrays.stream(resources)
-              .sorted(Comparator.comparing(it -> !it.isAnnotationPresent(Path.class)))
-              .forEach(this::initDispatcherTable);
     }
 
     @Override
