@@ -6,6 +6,7 @@ import org.eclipse.jetty.http.HttpMethod;
 import simple.jax.rs.dto.ExecutableMethod;
 
 import java.lang.reflect.Method;
+import java.lang.reflect.ParameterizedType;
 import java.util.Arrays;
 import java.util.Comparator;
 import java.util.HashMap;
@@ -15,6 +16,7 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 public class DispatcherTable implements URITable {
+    private static final HttpMethod[] HTTP_METHODS = HttpMethod.values();
     private final Map<String, Method> resourceMethods = new HashMap<>();
 
     public DispatcherTable(Class[] resources) {
@@ -29,16 +31,11 @@ public class DispatcherTable implements URITable {
         if (Objects.nonNull(classPath)) {
             initDispatcherTableByResource(resource, classPath.value());
         } else {
-            HttpMethod[] httpMethods = HttpMethod.values();
 
             Map.Entry<String, Method> parentMethodResource = resourceMethods
                     .entrySet()
                     .stream()
-                    .filter(entry -> Objects.equals(resource, entry.getValue().getReturnType())
-                            && Arrays.stream(entry.getValue().getAnnotations())
-                                     .noneMatch(annotation -> Arrays.asList(httpMethods)
-                                                                    .contains(HttpMethod.fromString(annotation.annotationType().getSimpleName())))
-                    )
+                    .filter(entry -> filterSubResourceLocator(resource, entry))
                     .findFirst()
                     .orElseThrow(() -> new RuntimeException("not find sub-resource by locators: " + resource));
 
@@ -47,6 +44,18 @@ public class DispatcherTable implements URITable {
 
             initDispatcherTableByResource(resource, parentPath);
         }
+    }
+
+    private boolean filterSubResourceLocator(Class<?> resource, Map.Entry<String, Method> entry) {
+        boolean sameReturnType = Objects.equals(resource, entry.getValue().getReturnType());
+        boolean sameReturnClass = entry.getValue().getReturnType().equals(Class.class) &&
+                Arrays.asList(((ParameterizedType) (entry.getValue().getGenericReturnType()))
+                        .getActualTypeArguments()).contains(resource);
+        boolean noHttpMethodAnnotation = Arrays.stream(entry.getValue().getAnnotations())
+                                               .noneMatch(annotation ->
+                                                       Arrays.asList(DispatcherTable.HTTP_METHODS)
+                                                             .contains(HttpMethod.fromString(annotation.annotationType().getSimpleName())));
+        return (sameReturnType || sameReturnClass) && noHttpMethodAnnotation;
     }
 
     private void initDispatcherTableByResource(Class<?> resource, String parentPath) {

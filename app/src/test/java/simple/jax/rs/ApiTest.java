@@ -12,6 +12,7 @@ import simple.jax.rs.dto.test.Project;
 import simple.jax.rs.resources.GroupResource;
 import simple.jax.rs.resources.MemberResource;
 import simple.jax.rs.resources.NameResource;
+import simple.jax.rs.resources.ProjectMemberClassResource;
 import simple.jax.rs.resources.ProjectMemberResource;
 import simple.jax.rs.resources.ProjectResource;
 import simple.jax.rs.resources.UserResource;
@@ -114,6 +115,16 @@ public class ApiTest {
     @Test
     public void should_query_sub_resource_with_empty_path() throws Exception {
         startServer(ProjectMemberResource.class, MemberResource.class);
+
+        ContentResponse response = httpClient.GET("http://localhost:8080/projects/members/1");
+
+        Member member = new Member("MEMBER-1");
+        assertEquals(member.toString(), response.getContentAsString());
+    }
+
+    @Test
+    public void should_query_sub_resource_with_return_class() throws Exception {
+        startServer(ProjectMemberClassResource.class, MemberResource.class);
 
         ContentResponse response = httpClient.GET("http://localhost:8080/projects/members/1");
 

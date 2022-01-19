@@ -11,6 +11,7 @@ import simple.jax.rs.resources.ErrorProjectResource;
 import simple.jax.rs.resources.GroupResource;
 import simple.jax.rs.resources.MemberResource;
 import simple.jax.rs.resources.NameResource;
+import simple.jax.rs.resources.ProjectMemberClassResource;
 import simple.jax.rs.resources.ProjectMemberResource;
 import simple.jax.rs.resources.ProjectMemberSlashResource;
 import simple.jax.rs.resources.ProjectResource;
@@ -364,7 +365,20 @@ public class HandleTest {
         assertEquals(9l, executableMethod.getParams().get("id"));
     }
 
+    @Test
+    public void should_get_method_with_sub_resource_with_class_return_type() {
+        DispatcherTable dispatcherTable = new DispatcherTable(new Class[]{MemberResource.class,
+                ProjectMemberClassResource.class});
 
+        HttpServletRequest request = Mockito.mock(HttpServletRequest.class);
+        Mockito.when(request.getPathInfo()).thenReturn("/projects/members/9");
+
+        ExecutableMethod executableMethod = dispatcherTable.getExecutableMethod(request);
+        assertNotNull(executableMethod);
+        assertEquals("findMemberById", executableMethod.getMethod().getName());
+        assertEquals(9l, executableMethod.getParams().get("id"));
+    }
+    
     public String test() {
         return "Test";
     }

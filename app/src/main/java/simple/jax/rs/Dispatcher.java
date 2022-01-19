@@ -2,7 +2,6 @@ package simple.jax.rs;
 
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
-import simple.jax.rs.URITable;
 import simple.jax.rs.dto.ExecutableMethod;
 
 import java.lang.reflect.Method;
