@@ -2,7 +2,6 @@ package simple.jax.rs;
 
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
-import jakarta.ws.rs.Path;
 import jakarta.ws.rs.PathParam;
 import jakarta.ws.rs.QueryParam;
 import org.junit.jupiter.api.Test;
@@ -15,17 +14,9 @@ import simple.jax.rs.resources.ProjectResource;
 import java.io.IOException;
 import java.io.PrintWriter;
 import java.io.StringWriter;
-import java.lang.reflect.Method;
-import java.lang.reflect.Parameter;
-import java.util.Arrays;
-import java.util.Comparator;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
-import java.util.Map;
-import java.util.Objects;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -309,178 +300,4 @@ public class HandleTest {
         return "CRM-" + statusList.stream().collect(Collectors.joining("|"));
     }
 
-    static class Dispatcher {
-        private URITable table;
-
-        public Dispatcher(URITable table) {
-            this.table = table;
-        }
-
-        public void handle(HttpServletRequest request, HttpServletResponse response) {
-            ExecutableMethod executableMethod = table.getExecutableMethod(request);
-            Method method = executableMethod.getMethod();
-            Map<String, Object> params = executableMethod.getParams();
-
-            try {
-                Object o = method.getDeclaringClass().getDeclaredConstructors()[0].newInstance();
-                Object result = method.invoke(o, params.values().toArray());
-                response.getWriter().write(result.toString());
-            } catch (Exception e) {
-                throw new RuntimeException(e);
-            }
-        }
-
-    }
-
-    static class DispatcherTable implements URITable {
-        private final Map<String, Method> resourceMethods = new HashMap<>();
-
-        public DispatcherTable(Class<?> resources) {
-            Path path = resources.getAnnotation(Path.class);
-
-            Arrays.stream(resources.getDeclaredMethods()).forEach(method -> {
-                String methodPath = composeMethodPath(method, path);
-                resourceMethods.put(methodPath, method);
-            });
-        }
-
-        @Override
-        public ExecutableMethod getExecutableMethod(HttpServletRequest request) {
-            String path = request.getPathInfo();
-
-            String methodPath = this.getMethodPatternPath(path);
-
-            Method method = resourceMethods.get(methodPath);
-
-            Map<String, Object> pathParams = ParameterHandler.getParams(methodPath, method, request);
-
-            return new ExecutableMethod(method, pathParams);
-        }
-
-        private String composeMethodPath(Method method, Path path) {
-            String classPath = path.value();
-            if (method.isAnnotationPresent(Path.class)) {
-                String subPath = method.getAnnotation(Path.class).value();
-                String additionalSlash = subPath.startsWith("/") ? "" : "/";
-                return classPath + additionalSlash + subPath;
-            } else {
-                return classPath;
-            }
-        }
-
-        private String getMethodPatternPath(String path) {
-            return resourceMethods.keySet()
-                                  .stream()
-                                  .sorted(Comparator.comparingInt(String::length).reversed())
-                                  .filter(key -> {
-                                      Pattern pathParamsKey = Pattern.compile("\\{\\w+\\}");
-                                      String methodPathPattern = getMethodPathPattern(key, pathParamsKey);
-
-                                      Pattern pattern = Pattern.compile(methodPathPattern);
-                                      Matcher matcher = pattern.matcher(path);
-                                      return matcher.find();
-                                  }).findFirst().orElseThrow(() -> new RuntimeException("not found match method"));
-        }
-
-        private String getMethodPathPattern(String key, Pattern pathParamsKey) {
-            StringBuilder stringBuilder = new StringBuilder();
-            Matcher pathParamsMatcher = pathParamsKey.matcher(key);
-            while (pathParamsMatcher.find()) {
-                pathParamsMatcher.appendReplacement(stringBuilder, "\\\\w+");
-            }
-            pathParamsMatcher.appendTail(stringBuilder);
-            return stringBuilder + "$";
-        }
-    }
-
-    public static class ParameterHandler {
-
-        public static Map<String, Object> getParams(String methodPatternPath, Method method,
-                                                    HttpServletRequest request) {
-            String path = request.getPathInfo();
-            HashMap<String, Object> params = new LinkedHashMap<>();
-            List<Parameter> pathParamList = List.of(method.getParameters());
-
-            pathParamList.forEach(parameter -> {
-                if (parameter.isAnnotationPresent(PathParam.class)) {
-                    Map<String, Object> pathParamMap = processPathParam(methodPatternPath, path, parameter);
-                    if (Objects.nonNull(pathParamMap)) {
-                        params.putAll(pathParamMap);
-                    }
-                } else if (parameter.isAnnotationPresent(QueryParam.class)) {
-                    params.putAll(processQueryParam(request, parameter));
-                }
-            });
-
-            return params;
-        }
-
-        private static Map<String, Object> processQueryParam(HttpServletRequest request,
-                                                             Parameter parameter) {
-            Map<String, Object> params = new LinkedHashMap<>();
-            String queryKey = parameter.getAnnotation(QueryParam.class).value();
-
-            List<String> queryParamStrWithKeys = Arrays.stream(request.getQueryString().split("&"))
-                                                       .filter(it -> it.contains(queryKey + "="))
-                                                       .collect(Collectors.toList());
-
-            if (queryParamStrWithKeys.isEmpty()) {
-                throw new RuntimeException("not found query params: " + queryKey);
-            }
-
-            if (parameter.getType().equals(List.class)) {
-                List<String> values = queryParamStrWithKeys.stream()
-                                                           .map(queryParamStrWithKey -> {
-                                                               String[] splitQuery =
-                                                                       queryParamStrWithKey.split("=");
-                                                               return splitQuery[1];
-                                                           })
-                                                           .filter(it -> !it.isEmpty())
-                                                           .collect(Collectors.toList());
-                params.put(queryKey, values);
-            } else {
-                String[] splitQuery = queryParamStrWithKeys.get(0).split("=");
-
-                if (splitQuery.length != 2) {
-                    throw new RuntimeException("query params can not be empty");
-                }
-
-                params.put(queryKey, parseParameterValue(splitQuery[1], parameter));
-            }
-            return params;
-        }
-
-        private static Map<String, Object> processPathParam(String methodPatternPath, String path,
-                                                            Parameter parameter) {
-            String key = parameter.getAnnotation(PathParam.class).value();
-            String patternStr = methodPatternPath.replace("{" + key + "}", "(\\w+)")
-                                                 .replaceAll("\\{\\w+\\}", "\\\\w+");
-
-            Pattern pattern = Pattern.compile(patternStr);
-            Matcher matcher = pattern.matcher(path);
-
-            matcher.find();
-            if (matcher.groupCount() > 0) {
-                Object value = parseParameterValue(matcher.group(1), parameter);
-                return new LinkedHashMap<>() {{
-                    put(key, value);
-                }};
-            }
-            return null;
-        }
-
-        static private Object parseParameterValue(String value, Parameter parameter) {
-            try {
-                if (long.class.equals(parameter.getType())) {
-                    return Long.parseLong(value);
-                }
-                if (int.class.equals(parameter.getType())) {
-                    return Integer.parseInt(value);
-                }
-                return value;
-            } catch (RuntimeException e) {
-                throw new RuntimeException("can not cast params");
-            }
-        }
-    }
 }
