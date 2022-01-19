@@ -72,7 +72,7 @@ public class DispatcherTable implements URITable {
     private String composeMethodPath(Method method, String classPath) {
         if (method.isAnnotationPresent(Path.class)) {
             String subPath = method.getAnnotation(Path.class).value();
-            String additionalSlash = subPath.startsWith("/") ? "" : "/";
+            String additionalSlash = subPath.startsWith("/") || classPath.endsWith("/") ? "" : "/";
             return classPath + additionalSlash + subPath;
         } else {
             return classPath;

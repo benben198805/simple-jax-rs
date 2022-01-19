@@ -11,6 +11,8 @@ import simple.jax.rs.resources.ErrorProjectResource;
 import simple.jax.rs.resources.GroupResource;
 import simple.jax.rs.resources.MemberResource;
 import simple.jax.rs.resources.NameResource;
+import simple.jax.rs.resources.ProjectMemberResource;
+import simple.jax.rs.resources.ProjectMemberSlashResource;
 import simple.jax.rs.resources.ProjectResource;
 
 import java.io.IOException;
@@ -332,6 +334,34 @@ public class HandleTest {
         dispatcher.handle(request, response);
 
         assertEquals("MEMBER-9", writer.toString());
+    }
+
+    @Test
+    public void should_get_method_with_sub_resource_with_empty_path() {
+        DispatcherTable dispatcherTable = new DispatcherTable(new Class[]{MemberResource.class,
+                ProjectMemberResource.class});
+
+        HttpServletRequest request = Mockito.mock(HttpServletRequest.class);
+        Mockito.when(request.getPathInfo()).thenReturn("/projects/members/9");
+
+        ExecutableMethod executableMethod = dispatcherTable.getExecutableMethod(request);
+        assertNotNull(executableMethod);
+        assertEquals("findMemberById", executableMethod.getMethod().getName());
+        assertEquals(9l, executableMethod.getParams().get("id"));
+    }
+
+    @Test
+    public void should_get_method_with_sub_resource_with_slash_path() {
+        DispatcherTable dispatcherTable = new DispatcherTable(new Class[]{MemberResource.class,
+                ProjectMemberSlashResource.class});
+
+        HttpServletRequest request = Mockito.mock(HttpServletRequest.class);
+        Mockito.when(request.getPathInfo()).thenReturn("/projects/members/9");
+
+        ExecutableMethod executableMethod = dispatcherTable.getExecutableMethod(request);
+        assertNotNull(executableMethod);
+        assertEquals("findMemberById", executableMethod.getMethod().getName());
+        assertEquals(9l, executableMethod.getParams().get("id"));
     }
 
 
