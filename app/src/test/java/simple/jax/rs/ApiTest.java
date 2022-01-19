@@ -101,13 +101,12 @@ public class ApiTest {
     }
 
     @Test
-    @Disabled
     public void should_query_sub_resource() throws Exception {
         startServer(ProjectResource.class, MemberResource.class);
 
         ContentResponse response = httpClient.GET("http://localhost:8080/projects/members/1");
 
-        Member member = new Member("ben");
+        Member member = new Member("MEMBER-1");
         assertEquals(member.toString(), response.getContentAsString());
     }
 }
