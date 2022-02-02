@@ -9,6 +9,7 @@ import simple.jax.rs.resources.GroupResource;
 import simple.jax.rs.resources.MemberResource;
 import simple.jax.rs.resources.NameResource;
 import simple.jax.rs.resources.ProjectMemberClassResource;
+import simple.jax.rs.resources.ProjectMemberObjectResource;
 import simple.jax.rs.resources.ProjectMemberResource;
 import simple.jax.rs.resources.ProjectMemberSlashResource;
 import simple.jax.rs.resources.ProjectResource;
@@ -213,6 +214,21 @@ class DispatcherTableTest {
     public void should_get_method_with_sub_resource_with_class_return_type() {
         DispatcherTable dispatcherTable = new DispatcherTable(new Class[]{MemberResource.class,
                 ProjectMemberClassResource.class});
+
+        HttpServletRequest request = Mockito.mock(HttpServletRequest.class);
+        Mockito.when(request.getPathInfo()).thenReturn("/projects/members/9");
+
+        ExecutableMethod executableMethod = dispatcherTable.getExecutableMethod(request);
+
+        assertExecutableMethod(executableMethod, "findMemberById", new HashMap<>() {{
+            put("id", 9l);
+        }});
+    }
+
+    @Test
+    public void should_get_method_with_sub_resource_returned_object() {
+        DispatcherTable dispatcherTable = new DispatcherTable(new Class[]{MemberResource.class,
+                ProjectMemberObjectResource.class});
 
         HttpServletRequest request = Mockito.mock(HttpServletRequest.class);
         Mockito.when(request.getPathInfo()).thenReturn("/projects/members/9");
