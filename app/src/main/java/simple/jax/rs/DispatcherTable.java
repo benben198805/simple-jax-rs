@@ -14,12 +14,14 @@ import java.lang.reflect.ParameterizedType;
 import java.util.Arrays;
 import java.util.Comparator;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.function.Consumer;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+import java.util.stream.Collectors;
 
 public class DispatcherTable implements URITable {
     private static final HttpMethod[] HTTP_METHODS = HttpMethod.values();
@@ -87,8 +89,6 @@ public class DispatcherTable implements URITable {
               .filter(this::subResourceOrMethodWithHttp)
               .forEach(method -> {
                   String methodPath = composeMethodPath(method, parentPath);
-                  System.out.println(methodPath);
-                  System.out.println(method);
                   resourceMethods.put(methodPath, method);
               });
     }
@@ -99,15 +99,27 @@ public class DispatcherTable implements URITable {
 
     @Override
     public ExecutableMethod getExecutableMethod(HttpServletRequest request) {
-        System.out.println(resourceMethods);
         String path = request.getPathInfo();
         String httpMethod = Objects.isNull(request.getMethod()) ? GET.class.getSimpleName() : request.getMethod();
-        String mediaType = Optional.ofNullable(request.getHeader(MEDIA_TYPE_HEADER)).orElse(MediaType.WILDCARD);
+        List<String> acceptMediaTypes = Arrays.stream(Optional.ofNullable(request.getHeader(MEDIA_TYPE_HEADER))
+                                                              .orElse(MediaType.WILDCARD)
+                                                              .split(",")).collect(Collectors.toList());
 
-        String methodPath = this.getMethodPatternPath(path, httpMethod, mediaType);
+        List<String> methodPaths = this.getMethodPatternPath(path, httpMethod);
+
+        String methodPath = methodPaths.stream()
+                                       .filter(methodPathKey -> {
+                                           Method method = resourceMethods.get(methodPathKey);
+
+                                           List<String> methodSupportMediaTypes =
+                                                   Optional.ofNullable(method.getAnnotation(Produces.class))
+                                                           .map(it -> Arrays.stream(it.value()).collect(Collectors.toList()))
+                                                           .orElse(List.of(MediaType.WILDCARD));
+                                           return methodSupportMediaTypes.contains("*/*") ||
+                                                   methodSupportMediaTypes.stream().anyMatch(acceptMediaTypes::contains);
+                                       }).findAny().orElseThrow(() -> new RuntimeException("not found match method"));
 
         Method method = resourceMethods.get(methodPath);
-
         Map<String, Object> pathParams = ParameterHandler.getParams(methodPath, method, request);
 
         return new ExecutableMethod(method, pathParams);
@@ -137,11 +149,11 @@ public class DispatcherTable implements URITable {
 
     private String getMediaType(Method method) {
         return Optional.ofNullable(method.getAnnotation(Produces.class))
-                       .flatMap(it -> Arrays.stream(it.value()).findAny())
+                       .map(it -> String.join("-", it.value()))
                        .orElse(MediaType.WILDCARD);
     }
 
-    private String getMethodPatternPath(String path, String httpMethod, String mediaType) {
+    private List<String> getMethodPatternPath(String path, String httpMethod) {
         return resourceMethods.keySet()
                               .stream()
                               .sorted(Comparator.comparingInt(String::length).reversed())
@@ -150,9 +162,9 @@ public class DispatcherTable implements URITable {
                                   String methodPathPattern = getMethodPathPattern(key, pathParamsKey);
 
                                   Pattern pattern = Pattern.compile(methodPathPattern);
-                                  Matcher matcher = pattern.matcher(httpMethod + ":" + mediaType + ":" + path);
+                                  Matcher matcher = pattern.matcher(httpMethod + ":" + "-/-" + ":" + path);
                                   return matcher.find();
-                              }).findFirst().orElseThrow(() -> new RuntimeException("not found match method"));
+                              }).collect(Collectors.toList());
     }
 
     private String getMethodPathPattern(String key, Pattern pathParamsKey) {
@@ -162,6 +174,6 @@ public class DispatcherTable implements URITable {
             pathParamsMatcher.appendReplacement(stringBuilder, "\\\\w+");
         }
         pathParamsMatcher.appendTail(stringBuilder);
-        return stringBuilder.toString().replace("*/*", "[\\w\\*]+/[\\w\\*]+") + "$";
+        return stringBuilder.toString().replaceAll(":(.*):", ":-/-:") + "$";
     }
 }

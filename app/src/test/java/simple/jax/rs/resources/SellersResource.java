@@ -20,8 +20,8 @@ public class SellersResource {
     }
 
     @GET
-    @Produces(MediaType.APPLICATION_XML)
+    @Produces({MediaType.APPLICATION_XML, MediaType.APPLICATION_ATOM_XML})
     public String getAsXml() {
-        return "get as APPLICATION_XML";
+        return "get as XML";
     }
 }

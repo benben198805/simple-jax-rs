@@ -280,6 +280,18 @@ class DispatcherTableTest {
         assertExecutableMethod(executableMethod, "getAsJson", new HashMap<>());
     }
 
+    @Test
+    public void should_get_method_with_multiple_media_type() {
+        DispatcherTable dispatcherTable = new DispatcherTable(new Class[]{SellersResource.class});
+
+        HttpServletRequest request = getHttpServletRequest("/sellers");
+        Mockito.when(request.getHeader("Accept")).thenReturn(MediaType.APPLICATION_ATOM_XML);
+
+        ExecutableMethod executableMethod = dispatcherTable.getExecutableMethod(request);
+
+        assertExecutableMethod(executableMethod, "getAsXml", new HashMap<>());
+    }
+
     private void assertExecutableMethod(ExecutableMethod executableMethod,
                                         String exceptedMethod) {
         this.assertExecutableMethod(executableMethod, exceptedMethod, new HashMap<>());
