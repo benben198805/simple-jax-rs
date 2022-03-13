@@ -25,7 +25,6 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
-import static simple.jax.rs.DispatcherTable.MEDIA_TYPE_HEADER;
 
 class DispatcherTableTest {
     @Test
@@ -290,6 +289,20 @@ class DispatcherTableTest {
         ExecutableMethod executableMethod = dispatcherTable.getExecutableMethod(request);
 
         assertExecutableMethod(executableMethod, "getAsXml", new HashMap<>());
+    }
+
+    @Test
+    public void should_get_method_with_multiple_media_type_request() {
+        DispatcherTable dispatcherTable = new DispatcherTable(new Class[]{SellersResource.class});
+
+        HttpServletRequest request = getHttpServletRequest("/sellers");
+        Mockito.when(request.getHeader("Accept")).thenReturn(
+                MediaType.APPLICATION_JSON_PATCH_JSON + "," + MediaType.APPLICATION_JSON
+        );
+
+        ExecutableMethod executableMethod = dispatcherTable.getExecutableMethod(request);
+
+        assertExecutableMethod(executableMethod, "getAsJson", new HashMap<>());
     }
 
     private void assertExecutableMethod(ExecutableMethod executableMethod,
