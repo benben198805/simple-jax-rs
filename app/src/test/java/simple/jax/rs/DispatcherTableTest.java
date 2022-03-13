@@ -253,6 +253,18 @@ class DispatcherTableTest {
         assertTrue(exception.getMessage().contains("not found match method"));
     }
 
+    @Test
+    public void should_get_method_with_delete_http_method() {
+        DispatcherTable dispatcherTable = new DispatcherTable(new Class[]{StudentResource.class});
+
+        HttpServletRequest request = getHttpServletRequest("/students");
+        Mockito.when(request.getMethod()).thenReturn("DELETE");
+
+        ExecutableMethod executableMethod = dispatcherTable.getExecutableMethod(request);
+
+        assertExecutableMethod(executableMethod, "delete", new HashMap<>());
+    }
+
     private void assertExecutableMethod(ExecutableMethod executableMethod,
                                         String exceptedMethod) {
         this.assertExecutableMethod(executableMethod, exceptedMethod, new HashMap<>());

@@ -2,19 +2,16 @@ package simple.jax.rs;
 
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.ws.rs.GET;
-import jakarta.ws.rs.POST;
 import jakarta.ws.rs.Path;
 import org.eclipse.jetty.http.HttpMethod;
 import simple.jax.rs.dto.ExecutableMethod;
 
 import javax.inject.Provider;
-import java.lang.annotation.Annotation;
 import java.lang.reflect.Method;
 import java.lang.reflect.ParameterizedType;
 import java.util.Arrays;
 import java.util.Comparator;
 import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
@@ -23,7 +20,6 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 public class DispatcherTable implements URITable {
-    public static final List<Class<? extends Annotation>> HTTP_METHOD_ANNOTATIONS = List.of(POST.class, GET.class);
     private static final HttpMethod[] HTTP_METHODS = HttpMethod.values();
     private final Map<String, Method> resourceMethods = new HashMap<>();
     private final Map<String, Consumer<Provider<?>>> resourceMethodsConsumers = new HashMap<>();
@@ -121,11 +117,10 @@ public class DispatcherTable implements URITable {
     }
 
     private Optional<String> getHttpMethod(Method method) {
-        return HTTP_METHOD_ANNOTATIONS
-                .stream()
-                .filter(it -> Objects.nonNull(method.getAnnotation(it)))
-                .map(Class::getSimpleName)
-                .findFirst();
+        return Arrays.stream(method.getAnnotations())
+                     .map(it -> it.annotationType().getSimpleName())
+                     .filter(it -> Arrays.stream(HTTP_METHODS).anyMatch(e -> e.toString().equals(it)))
+                     .findFirst();
     }
 
     private String getMethodPatternPath(String path, String httpMethod) {
