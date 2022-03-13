@@ -1,16 +1,20 @@
 package simple.jax.rs;
 
 import jakarta.servlet.http.HttpServletRequest;
+import jakarta.ws.rs.GET;
+import jakarta.ws.rs.POST;
 import jakarta.ws.rs.Path;
 import org.eclipse.jetty.http.HttpMethod;
 import simple.jax.rs.dto.ExecutableMethod;
 
 import javax.inject.Provider;
+import java.lang.annotation.Annotation;
 import java.lang.reflect.Method;
 import java.lang.reflect.ParameterizedType;
 import java.util.Arrays;
 import java.util.Comparator;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.function.Consumer;
@@ -87,8 +91,9 @@ public class DispatcherTable implements URITable {
     @Override
     public ExecutableMethod getExecutableMethod(HttpServletRequest request) {
         String path = request.getPathInfo();
+        String httpMethod = Objects.isNull(request.getMethod()) ? GET.class.getSimpleName() : request.getMethod();
 
-        String methodPath = this.getMethodPatternPath(path);
+        String methodPath = this.getMethodPatternPath(path, httpMethod);
 
         Method method = resourceMethods.get(methodPath);
 
@@ -103,11 +108,20 @@ public class DispatcherTable implements URITable {
             String additionalSlash = subPath.startsWith("/") || classPath.endsWith("/") ? "" : "/";
             return classPath + additionalSlash + subPath;
         } else {
-            return classPath;
+            String httpMethod = getHttpMethod(method);
+            return httpMethod + ":" + classPath;
         }
     }
 
-    private String getMethodPatternPath(String path) {
+    private String getHttpMethod(Method method) {
+        List<Class<? extends Annotation>> httpMethods = List.of(POST.class, GET.class);
+
+        return httpMethods.stream().filter(it -> Objects.nonNull(method.getAnnotation(it)))
+                          .map(Class::getSimpleName)
+                          .findFirst().orElse("GET");
+    }
+
+    private String getMethodPatternPath(String path, String httpMethod) {
         return resourceMethods.keySet()
                               .stream()
                               .sorted(Comparator.comparingInt(String::length).reversed())
@@ -116,7 +130,7 @@ public class DispatcherTable implements URITable {
                                   String methodPathPattern = getMethodPathPattern(key, pathParamsKey);
 
                                   Pattern pattern = Pattern.compile(methodPathPattern);
-                                  Matcher matcher = pattern.matcher(path);
+                                  Matcher matcher = pattern.matcher(httpMethod + ":" + path);
                                   return matcher.find();
                               }).findFirst().orElseThrow(() -> new RuntimeException("not found match method"));
     }

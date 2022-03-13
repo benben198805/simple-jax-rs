@@ -2,6 +2,8 @@ package simple.jax.rs;
 
 import org.eclipse.jetty.client.HttpClient;
 import org.eclipse.jetty.client.api.ContentResponse;
+import org.eclipse.jetty.client.util.FormRequestContent;
+import org.eclipse.jetty.util.Fields;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Disabled;
@@ -9,12 +11,14 @@ import org.junit.jupiter.api.Test;
 import simple.jax.rs.dto.test.Group;
 import simple.jax.rs.dto.test.Member;
 import simple.jax.rs.dto.test.Project;
+import simple.jax.rs.dto.test.Student;
 import simple.jax.rs.resources.GroupResource;
 import simple.jax.rs.resources.MemberResource;
 import simple.jax.rs.resources.NameResource;
 import simple.jax.rs.resources.ProjectMemberClassResource;
 import simple.jax.rs.resources.ProjectMemberResource;
 import simple.jax.rs.resources.ProjectResource;
+import simple.jax.rs.resources.StudentResource;
 import simple.jax.rs.resources.UserResource;
 
 import java.util.ArrayList;
@@ -131,4 +135,17 @@ public class ApiTest {
         Member member = new Member("MEMBER-1");
         assertEquals(member.toString(), response.getContentAsString());
     }
+
+//    @Test
+//    public void should_post_user() throws Exception {
+//        startServer(StudentResource.class);
+//        Fields fields = new Fields();
+//        fields.add("name", "John");
+//        FormRequestContent content = new FormRequestContent(fields);
+//
+//        ContentResponse response = httpClient.POST("http://localhost:8080/projects/members").body(content).send();
+//
+//        Student student = new Student("John");
+//        assertEquals(student.toString(), response.getContentAsString());
+//    }
 }

@@ -13,6 +13,7 @@ import simple.jax.rs.resources.ProjectMemberObjectResource;
 import simple.jax.rs.resources.ProjectMemberResource;
 import simple.jax.rs.resources.ProjectMemberSlashResource;
 import simple.jax.rs.resources.ProjectResource;
+import simple.jax.rs.resources.StudentResource;
 
 import java.util.HashMap;
 import java.util.List;
@@ -238,6 +239,19 @@ class DispatcherTableTest {
         assertExecutableMethod(executableMethod, "findMemberById", new HashMap<>() {{
             put("id", 9l);
         }});
+    }
+
+    @Test
+    public void should_get_method_with_post_http_method() {
+        DispatcherTable dispatcherTable = new DispatcherTable(new Class[]{StudentResource.class});
+
+        HttpServletRequest request = Mockito.mock(HttpServletRequest.class);
+        Mockito.when(request.getPathInfo()).thenReturn("/students");
+        Mockito.when(request.getMethod()).thenReturn("POST");
+
+        ExecutableMethod executableMethod = dispatcherTable.getExecutableMethod(request);
+
+        assertExecutableMethod(executableMethod, "create", new HashMap<>());
     }
 
     private void assertExecutableMethod(ExecutableMethod executableMethod,

@@ -20,13 +20,12 @@ public class ParameterHandler {
 
     public static Map<String, Object> getParams(String methodPatternPath, Method method,
                                                 HttpServletRequest request) {
-        String path = request.getPathInfo();
         HashMap<String, Object> params = new LinkedHashMap<>();
         List<Parameter> pathParamList = List.of(method.getParameters());
 
         pathParamList.forEach(parameter -> {
             if (parameter.isAnnotationPresent(PathParam.class)) {
-                Map<String, Object> pathParamMap = processPathParam(methodPatternPath, path, parameter);
+                Map<String, Object> pathParamMap = processPathParam(methodPatternPath, request, parameter);
                 if (Objects.nonNull(pathParamMap)) {
                     params.putAll(pathParamMap);
                 }
@@ -73,14 +72,15 @@ public class ParameterHandler {
         return params;
     }
 
-    private static Map<String, Object> processPathParam(String methodPatternPath, String path,
+    private static Map<String, Object> processPathParam(String methodPatternPath, HttpServletRequest request,
                                                         Parameter parameter) {
         String key = parameter.getAnnotation(PathParam.class).value();
         String patternStr = methodPatternPath.replace("{" + key + "}", "(\\w+)")
                                              .replaceAll("\\{\\w+\\}", "\\\\w+");
 
         Pattern pattern = Pattern.compile(patternStr);
-        Matcher matcher = pattern.matcher(path);
+
+        Matcher matcher = pattern.matcher(request.getMethod() + ":" + request.getPathInfo());
 
         matcher.find();
         if (matcher.groupCount() > 0) {

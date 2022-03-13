@@ -27,4 +27,12 @@ public class ExecutableMethod {
     public void setParams(Map<String, Object> params) {
         this.params = params;
     }
+
+    @Override
+    public String toString() {
+        return "ExecutableMethod{" +
+                "method=" + method +
+                ", params=" + params +
+                '}';
+    }
 }
