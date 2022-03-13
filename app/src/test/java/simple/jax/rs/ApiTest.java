@@ -11,7 +11,6 @@ import org.junit.jupiter.api.Test;
 import simple.jax.rs.dto.test.Group;
 import simple.jax.rs.dto.test.Member;
 import simple.jax.rs.dto.test.Project;
-import simple.jax.rs.dto.test.Student;
 import simple.jax.rs.resources.GroupResource;
 import simple.jax.rs.resources.MemberResource;
 import simple.jax.rs.resources.NameResource;
@@ -136,16 +135,15 @@ public class ApiTest {
         assertEquals(member.toString(), response.getContentAsString());
     }
 
-//    @Test
-//    public void should_post_user() throws Exception {
-//        startServer(StudentResource.class);
-//        Fields fields = new Fields();
-//        fields.add("name", "John");
-//        FormRequestContent content = new FormRequestContent(fields);
-//
-//        ContentResponse response = httpClient.POST("http://localhost:8080/projects/members").body(content).send();
-//
-//        Student student = new Student("John");
-//        assertEquals(student.toString(), response.getContentAsString());
-//    }
+    @Test
+    public void should_post_user() throws Exception {
+        startServer(StudentResource.class);
+        Fields fields = new Fields();
+        fields.add("name", "John");
+        FormRequestContent content = new FormRequestContent(fields);
+
+        ContentResponse response = httpClient.POST("http://localhost:8080/students").body(content).send();
+
+        assertEquals("post John", response.getContentAsString());
+    }
 }

@@ -4,7 +4,6 @@ import jakarta.ws.rs.DELETE;
 import jakarta.ws.rs.GET;
 import jakarta.ws.rs.POST;
 import jakarta.ws.rs.Path;
-import simple.jax.rs.dto.test.Student;
 
 @Path("/students")
 public class StudentResource {
@@ -15,9 +14,8 @@ public class StudentResource {
     }
 
     @POST
-    public Student create(Object request) {
-        System.out.println(request);
-        return new Student();
+    public String create() {
+        return "post John";
     }
 
     @DELETE
