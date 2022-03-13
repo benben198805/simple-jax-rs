@@ -17,11 +17,13 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Optional;
 import java.util.function.Consumer;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 public class DispatcherTable implements URITable {
+    public static final List<Class<? extends Annotation>> HTTP_METHOD_ANNOTATIONS = List.of(POST.class, GET.class);
     private static final HttpMethod[] HTTP_METHODS = HttpMethod.values();
     private final Map<String, Method> resourceMethods = new HashMap<>();
     private final Map<String, Consumer<Provider<?>>> resourceMethodsConsumers = new HashMap<>();
@@ -82,10 +84,16 @@ public class DispatcherTable implements URITable {
     }
 
     private void initDispatcherTableByResource(Class<?> resource, String parentPath) {
-        Arrays.stream(resource.getDeclaredMethods()).forEach(method -> {
-            String methodPath = composeMethodPath(method, parentPath);
-            resourceMethods.put(methodPath, method);
-        });
+        Arrays.stream(resource.getDeclaredMethods())
+              .filter(this::subResourceOrMethodWithHttp)
+              .forEach(method -> {
+                  String methodPath = composeMethodPath(method, parentPath);
+                  resourceMethods.put(methodPath, method);
+              });
+    }
+
+    private boolean subResourceOrMethodWithHttp(Method method) {
+        return Objects.nonNull(method.getAnnotation(Path.class)) || getHttpMethod(method).isPresent();
     }
 
     @Override
@@ -108,17 +116,16 @@ public class DispatcherTable implements URITable {
             String additionalSlash = subPath.startsWith("/") || classPath.endsWith("/") ? "" : "/";
             return classPath + additionalSlash + subPath;
         } else {
-            String httpMethod = getHttpMethod(method);
-            return httpMethod + ":" + classPath;
+            return getHttpMethod(method).orElse(null) + ":" + classPath;
         }
     }
 
-    private String getHttpMethod(Method method) {
-        List<Class<? extends Annotation>> httpMethods = List.of(POST.class, GET.class);
-
-        return httpMethods.stream().filter(it -> Objects.nonNull(method.getAnnotation(it)))
-                          .map(Class::getSimpleName)
-                          .findFirst().orElse("GET");
+    private Optional<String> getHttpMethod(Method method) {
+        return HTTP_METHOD_ANNOTATIONS
+                .stream()
+                .filter(it -> Objects.nonNull(method.getAnnotation(it)))
+                .map(Class::getSimpleName)
+                .findFirst();
     }
 
     private String getMethodPatternPath(String path, String httpMethod) {

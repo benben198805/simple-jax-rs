@@ -14,6 +14,7 @@ import simple.jax.rs.resources.ProjectMemberResource;
 import simple.jax.rs.resources.ProjectMemberSlashResource;
 import simple.jax.rs.resources.ProjectResource;
 import simple.jax.rs.resources.StudentResource;
+import simple.jax.rs.resources.StudentWithoutMethodResource;
 
 import java.util.HashMap;
 import java.util.List;
@@ -28,8 +29,7 @@ class DispatcherTableTest {
     public void should_get_method_by_path() {
         DispatcherTable dispatcherTable = new DispatcherTable(new Class[]{NameResource.class});
 
-        HttpServletRequest request = Mockito.mock(HttpServletRequest.class);
-        Mockito.when(request.getPathInfo()).thenReturn("/name");
+        HttpServletRequest request = getHttpServletRequest("/name");
 
         ExecutableMethod executableMethod = dispatcherTable.getExecutableMethod(request);
 
@@ -40,8 +40,7 @@ class DispatcherTableTest {
     public void should_get_method_with_path_param() {
         DispatcherTable dispatcherTable = new DispatcherTable(new Class[]{ProjectResource.class});
 
-        HttpServletRequest request = Mockito.mock(HttpServletRequest.class);
-        Mockito.when(request.getPathInfo()).thenReturn("/projects/1");
+        HttpServletRequest request = getHttpServletRequest("/projects/1");
 
         ExecutableMethod executableMethod = dispatcherTable.getExecutableMethod(request);
 
@@ -55,8 +54,7 @@ class DispatcherTableTest {
         DispatcherTable dispatcherTable = new DispatcherTable(new Class[]{ProjectResource.class});
 
 
-        HttpServletRequest request = Mockito.mock(HttpServletRequest.class);
-        Mockito.when(request.getPathInfo()).thenReturn("/projects-abc/1");
+        HttpServletRequest request = getHttpServletRequest("/projects-abc/1");
 
         Exception exception = assertThrows(RuntimeException.class,
                 () -> dispatcherTable.getExecutableMethod(request));
@@ -68,8 +66,7 @@ class DispatcherTableTest {
     public void should_throw_exception_when_can_not_cast_params() {
         DispatcherTable dispatcherTable = new DispatcherTable(new Class[]{ProjectResource.class});
 
-        HttpServletRequest request = Mockito.mock(HttpServletRequest.class);
-        Mockito.when(request.getPathInfo()).thenReturn("/projects/abc");
+        HttpServletRequest request = getHttpServletRequest("/projects/abc");
 
         Exception exception = assertThrows(RuntimeException.class,
                 () -> dispatcherTable.getExecutableMethod(request));
@@ -82,8 +79,7 @@ class DispatcherTableTest {
     public void should_get_method_with_multiple_path_param() {
         DispatcherTable dispatcherTable = new DispatcherTable(new Class[]{ProjectResource.class});
 
-        HttpServletRequest request = Mockito.mock(HttpServletRequest.class);
-        Mockito.when(request.getPathInfo()).thenReturn("/projects/1/items/ieu927");
+        HttpServletRequest request = getHttpServletRequest("/projects/1/items/ieu927");
 
         ExecutableMethod executableMethod = dispatcherTable.getExecutableMethod(request);
 
@@ -96,8 +92,7 @@ class DispatcherTableTest {
     @Test
     public void should_get_method_with_query_params() {
         DispatcherTable dispatcherTable = new DispatcherTable(new Class[]{ProjectResource.class});
-        HttpServletRequest request = Mockito.mock(HttpServletRequest.class);
-        Mockito.when(request.getPathInfo()).thenReturn("/projects");
+        HttpServletRequest request = getHttpServletRequest("/projects");
         Mockito.when(request.getQueryString()).thenReturn("start=1&size=10");
 
         ExecutableMethod executableMethod = dispatcherTable.getExecutableMethod(request);
@@ -112,8 +107,7 @@ class DispatcherTableTest {
     public void should_throw_exception_when_query_params_not_found() {
         DispatcherTable dispatcherTable = new DispatcherTable(new Class[]{ProjectResource.class});
 
-        HttpServletRequest request = Mockito.mock(HttpServletRequest.class);
-        Mockito.when(request.getPathInfo()).thenReturn("/projects");
+        HttpServletRequest request = getHttpServletRequest("/projects");
         Mockito.when(request.getQueryString()).thenReturn("start=1");
 
         Exception exception = assertThrows(RuntimeException.class,
@@ -126,8 +120,7 @@ class DispatcherTableTest {
     public void should_throw_exception_when_query_params_is_empty() {
         DispatcherTable dispatcherTable = new DispatcherTable(new Class[]{ProjectResource.class});
 
-        HttpServletRequest request = Mockito.mock(HttpServletRequest.class);
-        Mockito.when(request.getPathInfo()).thenReturn("/projects");
+        HttpServletRequest request = getHttpServletRequest("/projects");
         Mockito.when(request.getQueryString()).thenReturn("start=&size=2");
 
         Exception exception = assertThrows(RuntimeException.class,
@@ -140,8 +133,7 @@ class DispatcherTableTest {
     public void should_get_method_with_list_query_params() {
         DispatcherTable dispatcherTable = new DispatcherTable(new Class[]{GroupResource.class});
 
-        HttpServletRequest request = Mockito.mock(HttpServletRequest.class);
-        Mockito.when(request.getPathInfo()).thenReturn("/groups");
+        HttpServletRequest request = getHttpServletRequest("/groups");
         Mockito.when(request.getQueryString()).thenReturn("status=active&status=init");
 
         ExecutableMethod executableMethod = dispatcherTable.getExecutableMethod(request);
@@ -155,8 +147,7 @@ class DispatcherTableTest {
     public void should_get_method_with_sub_resource() {
         DispatcherTable dispatcherTable = new DispatcherTable(new Class[]{MemberResource.class, ProjectResource.class});
 
-        HttpServletRequest request = Mockito.mock(HttpServletRequest.class);
-        Mockito.when(request.getPathInfo()).thenReturn("/projects/members/9");
+        HttpServletRequest request = getHttpServletRequest("/projects/members/9");
 
         ExecutableMethod executableMethod = dispatcherTable.getExecutableMethod(request);
 
@@ -186,8 +177,7 @@ class DispatcherTableTest {
         DispatcherTable dispatcherTable = new DispatcherTable(new Class[]{MemberResource.class,
                 ProjectMemberResource.class});
 
-        HttpServletRequest request = Mockito.mock(HttpServletRequest.class);
-        Mockito.when(request.getPathInfo()).thenReturn("/projects/members/9");
+        HttpServletRequest request = getHttpServletRequest("/projects/members/9");
 
         ExecutableMethod executableMethod = dispatcherTable.getExecutableMethod(request);
 
@@ -201,8 +191,7 @@ class DispatcherTableTest {
         DispatcherTable dispatcherTable = new DispatcherTable(new Class[]{MemberResource.class,
                 ProjectMemberSlashResource.class});
 
-        HttpServletRequest request = Mockito.mock(HttpServletRequest.class);
-        Mockito.when(request.getPathInfo()).thenReturn("/projects/members/9");
+        HttpServletRequest request = getHttpServletRequest("/projects/members/9");
 
         ExecutableMethod executableMethod = dispatcherTable.getExecutableMethod(request);
 
@@ -216,8 +205,7 @@ class DispatcherTableTest {
         DispatcherTable dispatcherTable = new DispatcherTable(new Class[]{MemberResource.class,
                 ProjectMemberClassResource.class});
 
-        HttpServletRequest request = Mockito.mock(HttpServletRequest.class);
-        Mockito.when(request.getPathInfo()).thenReturn("/projects/members/9");
+        HttpServletRequest request = getHttpServletRequest("/projects/members/9");
 
         ExecutableMethod executableMethod = dispatcherTable.getExecutableMethod(request);
 
@@ -231,8 +219,7 @@ class DispatcherTableTest {
         DispatcherTable dispatcherTable = new DispatcherTable(new Class[]{MemberResource.class,
                 ProjectMemberObjectResource.class});
 
-        HttpServletRequest request = Mockito.mock(HttpServletRequest.class);
-        Mockito.when(request.getPathInfo()).thenReturn("/projects/members/9");
+        HttpServletRequest request = getHttpServletRequest("/projects/members/9");
 
         ExecutableMethod executableMethod = dispatcherTable.getExecutableMethod(request);
 
@@ -245,13 +232,25 @@ class DispatcherTableTest {
     public void should_get_method_with_post_http_method() {
         DispatcherTable dispatcherTable = new DispatcherTable(new Class[]{StudentResource.class});
 
-        HttpServletRequest request = Mockito.mock(HttpServletRequest.class);
-        Mockito.when(request.getPathInfo()).thenReturn("/students");
+        HttpServletRequest request = getHttpServletRequest("/students");
         Mockito.when(request.getMethod()).thenReturn("POST");
 
         ExecutableMethod executableMethod = dispatcherTable.getExecutableMethod(request);
 
         assertExecutableMethod(executableMethod, "create", new HashMap<>());
+    }
+
+    @Test
+    public void should_filter_method_without_method_type() {
+        DispatcherTable dispatcherTable = new DispatcherTable(new Class[]{StudentWithoutMethodResource.class});
+
+        HttpServletRequest request = getHttpServletRequest("/students");
+        Mockito.when(request.getMethod()).thenReturn("POST");
+
+        Exception exception = assertThrows(RuntimeException.class,
+                () -> dispatcherTable.getExecutableMethod(request));
+
+        assertTrue(exception.getMessage().contains("not found match method"));
     }
 
     private void assertExecutableMethod(ExecutableMethod executableMethod,
@@ -266,5 +265,12 @@ class DispatcherTableTest {
         assertEquals(exceptedMethod, executableMethod.getMethod().getName());
 
         exceptedParams.forEach((key, value) -> assertEquals(value, executableMethod.getParams().get(key)));
+    }
+
+    private HttpServletRequest getHttpServletRequest(String value) {
+        HttpServletRequest request = Mockito.mock(HttpServletRequest.class);
+        Mockito.when(request.getPathInfo()).thenReturn(value);
+        Mockito.when(request.getMethod()).thenReturn("GET");
+        return request;
     }
 }
