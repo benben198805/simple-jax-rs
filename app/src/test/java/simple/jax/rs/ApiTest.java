@@ -150,14 +150,14 @@ public class ApiTest {
         assertEquals("post John", response.getContentAsString());
     }
 
-//    @Test
-//    public void should_get_method_with_correct_method() throws Exception {
-//        startServer(SellersResource.class);
-//
-//        ContentResponse response =
-//                httpClient.newRequest("http://localhost:8080/sellers").method(HttpMethod.GET)
-//                          .header("Accept", MediaType.APPLICATION_JSON).send();
-//
-//        assertEquals("get as APPLICATION_JSON", response.getContentAsString());
-//    }
+    @Test
+    public void should_get_method_with_correct_method() throws Exception {
+        startServer(SellersResource.class);
+
+        ContentResponse response =
+                httpClient.newRequest("http://localhost:8080/sellers").method(HttpMethod.GET)
+                          .header("Accept", MediaType.APPLICATION_JSON).send();
+
+        assertEquals("get as APPLICATION_JSON", response.getContentAsString());
+    }
 }
