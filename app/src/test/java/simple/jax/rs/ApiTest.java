@@ -1,8 +1,10 @@
 package simple.jax.rs;
 
+import jakarta.ws.rs.core.MediaType;
 import org.eclipse.jetty.client.HttpClient;
 import org.eclipse.jetty.client.api.ContentResponse;
 import org.eclipse.jetty.client.util.FormRequestContent;
+import org.eclipse.jetty.http.HttpMethod;
 import org.eclipse.jetty.util.Fields;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -17,6 +19,7 @@ import simple.jax.rs.resources.NameResource;
 import simple.jax.rs.resources.ProjectMemberClassResource;
 import simple.jax.rs.resources.ProjectMemberResource;
 import simple.jax.rs.resources.ProjectResource;
+import simple.jax.rs.resources.SellersResource;
 import simple.jax.rs.resources.StudentResource;
 import simple.jax.rs.resources.UserResource;
 
@@ -146,4 +149,15 @@ public class ApiTest {
 
         assertEquals("post John", response.getContentAsString());
     }
+
+//    @Test
+//    public void should_get_method_with_correct_method() throws Exception {
+//        startServer(SellersResource.class);
+//
+//        ContentResponse response =
+//                httpClient.newRequest("http://localhost:8080/sellers").method(HttpMethod.GET)
+//                          .header("Accept", MediaType.APPLICATION_JSON).send();
+//
+//        assertEquals("get as APPLICATION_JSON", response.getContentAsString());
+//    }
 }

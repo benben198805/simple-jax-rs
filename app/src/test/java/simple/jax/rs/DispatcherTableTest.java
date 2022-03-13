@@ -1,6 +1,7 @@
 package simple.jax.rs;
 
 import jakarta.servlet.http.HttpServletRequest;
+import jakarta.ws.rs.core.MediaType;
 import org.junit.jupiter.api.Test;
 import org.mockito.Mockito;
 import simple.jax.rs.dto.ExecutableMethod;
@@ -13,6 +14,7 @@ import simple.jax.rs.resources.ProjectMemberObjectResource;
 import simple.jax.rs.resources.ProjectMemberResource;
 import simple.jax.rs.resources.ProjectMemberSlashResource;
 import simple.jax.rs.resources.ProjectResource;
+import simple.jax.rs.resources.SellersResource;
 import simple.jax.rs.resources.StudentResource;
 import simple.jax.rs.resources.StudentWithoutMethodResource;
 
@@ -23,6 +25,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static simple.jax.rs.DispatcherTable.MEDIA_TYPE_HEADER;
 
 class DispatcherTableTest {
     @Test
@@ -263,6 +266,18 @@ class DispatcherTableTest {
         ExecutableMethod executableMethod = dispatcherTable.getExecutableMethod(request);
 
         assertExecutableMethod(executableMethod, "delete", new HashMap<>());
+    }
+
+    @Test
+    public void should_get_method_with_json_accept() {
+        DispatcherTable dispatcherTable = new DispatcherTable(new Class[]{SellersResource.class});
+
+        HttpServletRequest request = getHttpServletRequest("/sellers");
+        Mockito.when(request.getHeader("Accept")).thenReturn(MediaType.APPLICATION_JSON);
+
+        ExecutableMethod executableMethod = dispatcherTable.getExecutableMethod(request);
+
+        assertExecutableMethod(executableMethod, "getAsJson", new HashMap<>());
     }
 
     private void assertExecutableMethod(ExecutableMethod executableMethod,

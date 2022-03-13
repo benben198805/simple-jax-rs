@@ -3,6 +3,8 @@ package simple.jax.rs;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.ws.rs.GET;
 import jakarta.ws.rs.Path;
+import jakarta.ws.rs.Produces;
+import jakarta.ws.rs.core.MediaType;
 import org.eclipse.jetty.http.HttpMethod;
 import simple.jax.rs.dto.ExecutableMethod;
 
@@ -21,6 +23,7 @@ import java.util.regex.Pattern;
 
 public class DispatcherTable implements URITable {
     private static final HttpMethod[] HTTP_METHODS = HttpMethod.values();
+    public static final String MEDIA_TYPE_HEADER = "Accept";
     private final Map<String, Method> resourceMethods = new HashMap<>();
     private final Map<String, Consumer<Provider<?>>> resourceMethodsConsumers = new HashMap<>();
 
@@ -84,6 +87,8 @@ public class DispatcherTable implements URITable {
               .filter(this::subResourceOrMethodWithHttp)
               .forEach(method -> {
                   String methodPath = composeMethodPath(method, parentPath);
+                  System.out.println(methodPath);
+                  System.out.println(method);
                   resourceMethods.put(methodPath, method);
               });
     }
@@ -94,10 +99,12 @@ public class DispatcherTable implements URITable {
 
     @Override
     public ExecutableMethod getExecutableMethod(HttpServletRequest request) {
+        System.out.println(resourceMethods);
         String path = request.getPathInfo();
         String httpMethod = Objects.isNull(request.getMethod()) ? GET.class.getSimpleName() : request.getMethod();
+        String mediaType = Optional.ofNullable(request.getHeader(MEDIA_TYPE_HEADER)).orElse(MediaType.WILDCARD);
 
-        String methodPath = this.getMethodPatternPath(path, httpMethod);
+        String methodPath = this.getMethodPatternPath(path, httpMethod, mediaType);
 
         Method method = resourceMethods.get(methodPath);
 
@@ -110,9 +117,14 @@ public class DispatcherTable implements URITable {
         if (method.isAnnotationPresent(Path.class)) {
             String subPath = method.getAnnotation(Path.class).value();
             String additionalSlash = subPath.startsWith("/") || classPath.endsWith("/") ? "" : "/";
-            return classPath + additionalSlash + subPath;
+
+            String prefix = "";
+            if (getHttpMethod(method).isPresent()) {
+                prefix = getHttpMethod(method).orElse(null) + ":" + getMediaType(method) + ":";
+            }
+            return prefix + classPath + additionalSlash + subPath;
         } else {
-            return getHttpMethod(method).orElse(null) + ":" + classPath;
+            return getHttpMethod(method).orElse(null) + ":" + getMediaType(method) + ":" + classPath;
         }
     }
 
@@ -123,7 +135,13 @@ public class DispatcherTable implements URITable {
                      .findFirst();
     }
 
-    private String getMethodPatternPath(String path, String httpMethod) {
+    private String getMediaType(Method method) {
+        return Optional.ofNullable(method.getAnnotation(Produces.class))
+                       .flatMap(it -> Arrays.stream(it.value()).findAny())
+                       .orElse(MediaType.WILDCARD);
+    }
+
+    private String getMethodPatternPath(String path, String httpMethod, String mediaType) {
         return resourceMethods.keySet()
                               .stream()
                               .sorted(Comparator.comparingInt(String::length).reversed())
@@ -132,7 +150,7 @@ public class DispatcherTable implements URITable {
                                   String methodPathPattern = getMethodPathPattern(key, pathParamsKey);
 
                                   Pattern pattern = Pattern.compile(methodPathPattern);
-                                  Matcher matcher = pattern.matcher(httpMethod + ":" + path);
+                                  Matcher matcher = pattern.matcher(httpMethod + ":" + mediaType + ":" + path);
                                   return matcher.find();
                               }).findFirst().orElseThrow(() -> new RuntimeException("not found match method"));
     }
@@ -144,6 +162,6 @@ public class DispatcherTable implements URITable {
             pathParamsMatcher.appendReplacement(stringBuilder, "\\\\w+");
         }
         pathParamsMatcher.appendTail(stringBuilder);
-        return stringBuilder + "$";
+        return stringBuilder.toString().replace("*/*", "[\\w\\*]+/[\\w\\*]+") + "$";
     }
 }
