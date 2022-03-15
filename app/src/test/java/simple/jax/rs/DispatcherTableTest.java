@@ -1,6 +1,7 @@
 package simple.jax.rs;
 
 import jakarta.servlet.http.HttpServletRequest;
+import jakarta.ws.rs.NotSupportedException;
 import jakarta.ws.rs.core.MediaType;
 import org.junit.jupiter.api.Test;
 import org.mockito.Mockito;
@@ -319,8 +320,18 @@ class DispatcherTableTest {
         assertExecutableMethod(executableMethod, "consumeAsForm", new HashMap<>());
     }
 
-    private void assertExecutableMethod(ExecutableMethod executableMethod,
-                                        String exceptedMethod) {
+    @Test
+    public void should_throw_exception_when_no_correct_content_type() {
+        DispatcherTable dispatcherTable = new DispatcherTable(new Class[]{BuyersResource.class});
+
+        HttpServletRequest request = getHttpServletRequest("/buyers");
+        Mockito.when(request.getHeader("Content-Type")).thenReturn(MediaType.APPLICATION_JSON);
+        Mockito.when(request.getMethod()).thenReturn("POST");
+
+        assertThrows(NotSupportedException.class, () -> dispatcherTable.getExecutableMethod(request));
+    }
+
+    private void assertExecutableMethod(ExecutableMethod executableMethod, String exceptedMethod) {
         this.assertExecutableMethod(executableMethod, exceptedMethod, new HashMap<>());
     }
 

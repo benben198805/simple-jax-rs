@@ -136,8 +136,7 @@ public class DispatcherTable implements URITable {
         }
 
         return methodsFilteredByAccept.stream()
-                                      .filter(method -> isAvailableSupportMediaType(supportedMediaTypes,
-                                              method))
+                                      .filter(method -> isAvailableSupportMediaType(supportedMediaTypes, method))
                                       .findAny()
                                       .orElseThrow(NotSupportedException::new);
     }
