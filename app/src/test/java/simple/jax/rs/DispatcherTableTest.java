@@ -7,6 +7,8 @@ import org.junit.jupiter.api.Test;
 import org.mockito.Mockito;
 import simple.jax.rs.dto.ExecutableMethod;
 import simple.jax.rs.resources.BuyersResource;
+import simple.jax.rs.resources.BuyersWithWildcardResource;
+import simple.jax.rs.resources.BuyersWithoutConsumeResource;
 import simple.jax.rs.resources.ErrorProjectResource;
 import simple.jax.rs.resources.GroupResource;
 import simple.jax.rs.resources.MemberResource;
@@ -329,6 +331,32 @@ class DispatcherTableTest {
         Mockito.when(request.getMethod()).thenReturn("POST");
 
         assertThrows(NotSupportedException.class, () -> dispatcherTable.getExecutableMethod(request));
+    }
+
+    @Test
+    public void should_get_method_when_method_with_wildcard() {
+        DispatcherTable dispatcherTable = new DispatcherTable(new Class[]{BuyersWithWildcardResource.class});
+
+        HttpServletRequest request = getHttpServletRequest("/buyers/wildcard");
+        Mockito.when(request.getHeader("Content-Type")).thenReturn(MediaType.APPLICATION_JSON);
+        Mockito.when(request.getMethod()).thenReturn("POST");
+
+        ExecutableMethod executableMethod = dispatcherTable.getExecutableMethod(request);
+
+        assertExecutableMethod(executableMethod, "consumeAsWildcard", new HashMap<>());
+    }
+
+    @Test
+    public void should_get_method_when_method_without_consume() {
+        DispatcherTable dispatcherTable = new DispatcherTable(new Class[]{BuyersWithoutConsumeResource.class});
+
+        HttpServletRequest request = getHttpServletRequest("/buyers/none");
+        Mockito.when(request.getHeader("Content-Type")).thenReturn(MediaType.APPLICATION_JSON);
+        Mockito.when(request.getMethod()).thenReturn("POST");
+
+        ExecutableMethod executableMethod = dispatcherTable.getExecutableMethod(request);
+
+        assertExecutableMethod(executableMethod, "consumeAsNone", new HashMap<>());
     }
 
     private void assertExecutableMethod(ExecutableMethod executableMethod, String exceptedMethod) {
