@@ -13,6 +13,7 @@ import org.junit.jupiter.api.Test;
 import simple.jax.rs.dto.test.Group;
 import simple.jax.rs.dto.test.Member;
 import simple.jax.rs.dto.test.Project;
+import simple.jax.rs.resources.BuyersResource;
 import simple.jax.rs.resources.GroupResource;
 import simple.jax.rs.resources.MemberResource;
 import simple.jax.rs.resources.NameResource;
@@ -151,7 +152,7 @@ public class ApiTest {
     }
 
     @Test
-    public void should_get_method_with_correct_method() throws Exception {
+    public void should_invoke_method_with_accept() throws Exception {
         startServer(SellersResource.class);
 
         ContentResponse response =
@@ -160,4 +161,21 @@ public class ApiTest {
 
         assertEquals("get as APPLICATION_JSON", response.getContentAsString());
     }
+
+//    @Test
+//    public void should_invoke_method_with_content_type() throws Exception {
+//        startServer(BuyersResource.class);
+//
+//        Fields fields = new Fields();
+//        fields.put(new Fields.Field("name", "John"));
+//        FormRequestContent content = new FormRequestContent(fields);
+//
+//        ContentResponse response =
+//                httpClient.POST("http://localhost:8080/buyers")
+//                          .header("content-type", MediaType.APPLICATION_XML)
+//                          .body(content)
+//                          .send();
+//
+//        assertEquals("get as APPLICATION_FORM_URLENCODED", response.getContentAsString());
+//    }
 }

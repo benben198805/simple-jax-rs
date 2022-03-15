@@ -1,8 +1,10 @@
 package simple.jax.rs;
 
 import jakarta.servlet.http.HttpServletRequest;
+import jakarta.ws.rs.Consumes;
 import jakarta.ws.rs.GET;
 import jakarta.ws.rs.NotAcceptableException;
+import jakarta.ws.rs.NotSupportedException;
 import jakarta.ws.rs.Path;
 import jakarta.ws.rs.Produces;
 import jakarta.ws.rs.core.MediaType;
@@ -25,7 +27,8 @@ import java.util.stream.Collectors;
 
 public class DispatcherTable implements URITable {
     private static final HttpMethod[] HTTP_METHODS = HttpMethod.values();
-    public static final String MEDIA_TYPE_HEADER = "Accept";
+    public static final String ACCEPT_MEDIA_TYPE_HEADER = "Accept";
+    public static final String SUPPORTED_MEDIA_TYPE_HEADER = "Content-Type";
     private final Map<String, List<Method>> resourceMethods = new HashMap<>();
 
     public DispatcherTable(Class[] resources) {
@@ -114,14 +117,38 @@ public class DispatcherTable implements URITable {
     }
 
     private Method getMethodByMethodPath(HttpServletRequest request, String methodPath) {
-        List<String> acceptMediaTypes = Arrays.stream(Optional.ofNullable(request.getHeader(MEDIA_TYPE_HEADER))
+        List<String> acceptMediaTypes = Arrays.stream(Optional.ofNullable(request.getHeader(ACCEPT_MEDIA_TYPE_HEADER))
                                                               .orElse(MediaType.WILDCARD)
                                                               .split(",")).collect(Collectors.toList());
 
-        return resourceMethods.get(methodPath)
-                              .stream()
-                              .filter(method -> isAvailableAcceptMediaType(acceptMediaTypes, method))
-                              .findAny().orElseThrow(NotAcceptableException::new);
+        List<String> supportedMediaTypes =
+                Arrays.stream(Optional.ofNullable(request.getHeader(SUPPORTED_MEDIA_TYPE_HEADER))
+                                      .orElse(MediaType.WILDCARD)
+                                      .split(",")).collect(Collectors.toList());
+
+        List<Method> methodsFilteredByAccept = resourceMethods.get(methodPath)
+                                                              .stream()
+                                                              .filter(method -> isAvailableAcceptMediaType(acceptMediaTypes, method))
+                                                              .collect(Collectors.toList());
+
+        if (methodsFilteredByAccept.isEmpty()) {
+            throw new NotAcceptableException();
+        }
+
+        return methodsFilteredByAccept.stream()
+                                      .filter(method -> isAvailableSupportMediaType(supportedMediaTypes,
+                                              method))
+                                      .findAny()
+                                      .orElseThrow(NotSupportedException::new);
+    }
+
+    private boolean isAvailableSupportMediaType(List<String> supportedMediaTypes, Method method) {
+        List<String> methodSupportMediaTypes =
+                Optional.ofNullable(method.getAnnotation(Consumes.class))
+                        .map(it -> Arrays.stream(it.value()).collect(Collectors.toList()))
+                        .orElse(List.of(MediaType.WILDCARD));
+        return methodSupportMediaTypes.contains("*/*") ||
+                methodSupportMediaTypes.stream().anyMatch(supportedMediaTypes::contains);
     }
 
     private boolean isAvailableAcceptMediaType(List<String> acceptMediaTypes, Method method) {
@@ -172,17 +199,19 @@ public class DispatcherTable implements URITable {
         String path = request.getPathInfo();
         String httpMethod = Objects.isNull(request.getMethod()) ? GET.class.getSimpleName() : request.getMethod();
 
-        return resourceMethods.keySet()
-                              .stream()
-                              .sorted(Comparator.comparingInt(String::length).reversed())
-                              .filter(key -> {
-                                  Pattern pathParamsKey = Pattern.compile("\\{\\w+\\}");
-                                  String methodPathPattern = getMethodPathPattern(key, pathParamsKey);
+        return resourceMethods
+                .keySet()
+                .stream()
+                .sorted(Comparator.comparingInt(String::length).reversed())
+                .filter(key -> {
+                    Pattern pathParamsKey = Pattern.compile("\\{\\w+\\}");
+                    String methodPathPattern = getMethodPathPattern(key,
+                            pathParamsKey);
 
-                                  Pattern pattern = Pattern.compile(methodPathPattern);
-                                  Matcher matcher = pattern.matcher(httpMethod + ":" + path);
-                                  return matcher.find();
-                              }).collect(Collectors.toList());
+                    Pattern pattern = Pattern.compile(methodPathPattern);
+                    Matcher matcher = pattern.matcher(httpMethod + ":" + path);
+                    return matcher.find();
+                }).collect(Collectors.toList());
     }
 
     private String getMethodPathPattern(String key, Pattern pathParamsKey) {

@@ -5,6 +5,7 @@ import jakarta.ws.rs.core.MediaType;
 import org.junit.jupiter.api.Test;
 import org.mockito.Mockito;
 import simple.jax.rs.dto.ExecutableMethod;
+import simple.jax.rs.resources.BuyersResource;
 import simple.jax.rs.resources.ErrorProjectResource;
 import simple.jax.rs.resources.GroupResource;
 import simple.jax.rs.resources.MemberResource;
@@ -303,6 +304,19 @@ class DispatcherTableTest {
         ExecutableMethod executableMethod = dispatcherTable.getExecutableMethod(request);
 
         assertExecutableMethod(executableMethod, "getAsJson", new HashMap<>());
+    }
+
+    @Test
+    public void should_get_method_with_correct_content_type() {
+        DispatcherTable dispatcherTable = new DispatcherTable(new Class[]{BuyersResource.class});
+
+        HttpServletRequest request = getHttpServletRequest("/buyers");
+        Mockito.when(request.getHeader("Content-Type")).thenReturn(MediaType.APPLICATION_FORM_URLENCODED);
+        Mockito.when(request.getMethod()).thenReturn("POST");
+
+        ExecutableMethod executableMethod = dispatcherTable.getExecutableMethod(request);
+
+        assertExecutableMethod(executableMethod, "consumeAsForm", new HashMap<>());
     }
 
     private void assertExecutableMethod(ExecutableMethod executableMethod,
