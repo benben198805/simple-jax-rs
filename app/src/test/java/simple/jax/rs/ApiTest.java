@@ -4,6 +4,7 @@ import jakarta.ws.rs.core.MediaType;
 import org.eclipse.jetty.client.HttpClient;
 import org.eclipse.jetty.client.api.ContentResponse;
 import org.eclipse.jetty.client.util.FormRequestContent;
+import org.eclipse.jetty.client.util.StringRequestContent;
 import org.eclipse.jetty.http.HttpMethod;
 import org.eclipse.jetty.util.Fields;
 import org.junit.jupiter.api.AfterEach;
@@ -162,20 +163,15 @@ public class ApiTest {
         assertEquals("get as APPLICATION_JSON", response.getContentAsString());
     }
 
-//    @Test
-//    public void should_invoke_method_with_content_type() throws Exception {
-//        startServer(BuyersResource.class);
-//
-//        Fields fields = new Fields();
-//        fields.put(new Fields.Field("name", "John"));
-//        FormRequestContent content = new FormRequestContent(fields);
-//
-//        ContentResponse response =
-//                httpClient.POST("http://localhost:8080/buyers")
-//                          .header("content-type", MediaType.APPLICATION_XML)
-//                          .body(content)
-//                          .send();
-//
-//        assertEquals("get as APPLICATION_FORM_URLENCODED", response.getContentAsString());
-//    }
+    @Test
+    public void should_invoke_method_with_content_type() throws Exception {
+        startServer(BuyersResource.class);
+
+        ContentResponse response =
+                httpClient.POST("http://localhost:8080/buyers")
+                          .header("Content-Type", MediaType.APPLICATION_XML)
+                          .send();
+
+        assertEquals("get as APPLICATION_XML", response.getContentAsString());
+    }
 }

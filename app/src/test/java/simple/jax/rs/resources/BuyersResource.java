@@ -9,21 +9,13 @@ import jakarta.ws.rs.core.MediaType;
 public class BuyersResource {
     @POST
     @Consumes(MediaType.APPLICATION_XML)
-    public void consumeAsXml(XmlBuyer buyer) {
-
+    public String consumeAsXml() {
+        return "get as APPLICATION_XML";
     }
 
     @POST
     @Consumes(MediaType.APPLICATION_FORM_URLENCODED)
-    public void consumeAsForm(FormBuyer buyer) {
+    public void consumeAsForm() {
 
-    }
-
-    public class FormBuyer {
-        public String name;
-    }
-
-    public class XmlBuyer {
-        public String name;
     }
 }
